@@ -24,7 +24,7 @@ on:
 
 jobs:
   build-scan-push:
-    name: "Build → Trivy Scan → Push → Update Config"
+    name: "Build, scan and push to Harbor"
     runs-on: ubuntu-latest
 
     steps:
@@ -47,7 +47,7 @@ jobs:
           echo "  ${IMAGE}:${{ gitea.sha }}"
           echo "  ${IMAGE}:latest"
 
-      # ── 3. Trivy scan (CRITICAL + HIGH) ──────────────────────
+      # ── 3. Trivy scan ──────────────────────────────────────────
       - name: Trivy vulnerability scan
         run: |
           echo "Running vulnerability scan..."
@@ -82,15 +82,3 @@ jobs:
           echo "Push completed:"
           echo "  ${IMAGE_BASE}:${{ gitea.sha }}"
           echo "  ${IMAGE_BASE}:latest"
-
-      # ── 6. Summary ────────────────────────────────────────────
-      - name: Summary
-        if: always()
-        run: |
-          echo "════════════════════════════════════"
-          echo "  Pipeline finished"
-          echo "  Repository : ${{ gitea.repository }}"
-          echo "  Commit     : ${{ gitea.sha }}"
-          echo "  Event      : ${{ gitea.event_name }}"
-          echo "  Ref        : ${{ gitea.ref_name }}"
-          echo "════════════════════════════════════"

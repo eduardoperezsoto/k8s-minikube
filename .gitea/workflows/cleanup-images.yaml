@@ -1,7 +1,7 @@
 name: "Cleanup Old Harbor Images"
 
 # ─────────────────────────────────────────────────────────────
-# Flow 3: Queries ArgoCD to find which images are in use,
+# Queries ArgoCD to find which images are in use,
 # then removes old versions from Harbor, keeping only:
 #   1. The currently deployed version
 #   2. The immediately previous version (emergency rollback)
@@ -54,13 +54,3 @@ jobs:
           HARBOR_REGISTRY_HOST:  ${{ secrets.HARBOR_REGISTRY_HOST }}
         run: |
           python3 cicd/scripts/cleanup_images.py
-
-      # ── 4. Summary ────────────────────────────────────────────
-      - name: Summary
-        if: always()
-        run: |
-          echo "════════════════════════════════════"
-          echo "  Cleanup finished"
-          echo "  Date   : $(date -u '+%Y-%m-%d %H:%M UTC')"
-          echo "  Trigger: ${{ gitea.event_name }}"
-          echo "════════════════════════════════════"

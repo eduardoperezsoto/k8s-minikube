@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: act-runner-config
+  namespace: gitea
+data:
+  config.yaml: |
+    log:
+      level: info
+    runner:
+      file: /data/.runner
+      capacity: 2
+      timeout: 3h
+    container:
+      network: bridge
+      # Point job containers to kube-dns so they can resolve
+      # *.svc.cluster.local hostnames (10.96.0.10 is the default
+      # kube-dns ClusterIP in minikube/kubeadm)
+      options: "--dns=10.96.0.10 --dns=8.8.8.8 --dns-search=svc.cluster.local --dns-search=cluster.local"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+      valid_volumes:
+        - /var/run/docker.sock
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: act-runner
+  namespace: gitea
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: act-runner
+  template:
+    metadata:
+      labels:
+        app: act-runner
+    spec:
+      containers:
+        - name: runner
+          image: gitea/act_runner:latest
+          env:
+            - name: GITEA_INSTANCE_URL
+              value: "http://gitea-http.gitea.svc.cluster.local:3000"
+            - name: GITEA_RUNNER_REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: act-runner-token
+                  key: token
+            - name: GITEA_RUNNER_NAME
+              value: "k8s-runner"
+            # catthehacker/ubuntu:act-22.04 has git, docker CLI and
+            # common CI tools pre-installed — used by nektos/act
+            - name: GITEA_RUNNER_LABELS
+              value: "ubuntu-latest:docker://catthehacker/ubuntu:act-22.04"
+            - name: CONFIG_FILE
+              value: /etc/act-runner/config.yaml
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            - name: runner-config
+              mountPath: /etc/act-runner
+            - name: runner-data
+              mountPath: /data
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        - name: runner-config
+          configMap:
+            name: act-runner-config
+        - name: runner-data
+          emptyDir: {}

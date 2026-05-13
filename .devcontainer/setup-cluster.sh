@@ -58,6 +58,9 @@ helm upgrade --install argocd argo/argo-cd -n argocd \
   -f /workspaces/minikube/k8s/argocd/values.yaml --wait --timeout 5m
 kubectl apply -f /workspaces/minikube/k8s/argocd/ingress.yaml
 
+echo "==> 10. Instalando Gitea Act Runner..."
+/workspaces/minikube/.devcontainer/install-gitea-runner.sh
+
 ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
 
 echo ""
