@@ -1,0 +1,17 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: argocd-route
+  namespace: argocd
+spec:
+  ingressClassName: apisix
+  http:
+  - name: argocd
+    match:
+      hosts:
+      - argocd.127.0.0.1.nip.io
+      paths:
+      - /*
+    backends:
+    - serviceName: argocd-server
+      servicePort: 80

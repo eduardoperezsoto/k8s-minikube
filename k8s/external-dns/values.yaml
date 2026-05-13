@@ -1,0 +1,24 @@
+provider:
+  name: aws
+
+# dry-run: registra en logs lo que haría sin escribir en ningún DNS real
+extraArgs:
+  - --dry-run
+  - --log-level=debug
+
+# Fuentes que monitoriza
+sources:
+  - ingress
+  - service
+
+policy: sync
+txtOwnerId: minikube-dev
+
+# Credenciales ficticias (no se conecta en dry-run)
+env:
+  - name: AWS_ACCESS_KEY_ID
+    value: "AKIAIOSFODNN7EXAMPLE"
+  - name: AWS_SECRET_ACCESS_KEY
+    value: "dummy"
+  - name: AWS_DEFAULT_REGION
+    value: "us-east-1"

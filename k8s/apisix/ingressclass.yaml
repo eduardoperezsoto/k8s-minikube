@@ -1,0 +1,12 @@
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: apisix
+spec:
+  controller: apisix.apache.org/apisix-ingress-controller
+  parameters:
+    apiGroup: apisix.apache.org
+    kind: GatewayProxy
+    name: default
+    namespace: apisix
+    scope: Namespace

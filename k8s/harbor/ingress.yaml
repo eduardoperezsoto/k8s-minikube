@@ -1,0 +1,17 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: harbor-route
+  namespace: harbor
+spec:
+  ingressClassName: apisix
+  http:
+  - name: harbor
+    match:
+      hosts:
+      - registry.127.0.0.1.nip.io
+      paths:
+      - /*
+    backends:
+    - serviceName: harbor
+      servicePort: 80

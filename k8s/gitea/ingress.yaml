@@ -1,0 +1,17 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: gitea-route
+  namespace: gitea
+spec:
+  ingressClassName: apisix
+  http:
+  - name: gitea
+    match:
+      hosts:
+      - gitea.127.0.0.1.nip.io
+      paths:
+      - /*
+    backends:
+    - serviceName: gitea-http
+      servicePort: 3000

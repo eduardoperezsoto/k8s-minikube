@@ -1,0 +1,23 @@
+externalURL: http://registry.127.0.0.1.nip.io:8080
+
+expose:
+  type: clusterIP
+  clusterIP:
+    name: harbor
+    ports:
+      httpPort: 80
+      httpsPort: 443
+  tls:
+    enabled: false
+
+harborAdminPassword: "Harbor12345"
+
+# Sin persistencia para entorno de desarrollo efímero
+persistence:
+  enabled: false
+
+# Componentes desactivados para reducir recursos en dev
+trivy:
+  enabled: false
+notary:
+  enabled: false

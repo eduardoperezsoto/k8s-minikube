@@ -1,0 +1,37 @@
+{
+  "name": "Minikube Cluster Env",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  
+  // 1. FEATURES: Instalamos Docker y las herramientas de K8s automáticamente
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {}
+  },
+
+  // 2. CONFIGURACIÓN VS CODE: Extensiones que se instalarán solas
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+        "ms-vscode.makefile-tools",
+        "anthropic.claude-code"// Claude AI
+      ]
+    }
+  },
+
+  // 3. PERMISOS: Crucial para que Minikube pueda crear contenedores anidados
+  "runArgs": [
+    "--privileged"
+  ],
+
+  // 4. PUERTOS: Todo entra por APISIX en el 8080
+  "forwardPorts": [8080],
+
+  // 5. POST-CREATE: Instala todo solo la primera vez que se crea el contenedor
+  "postCreateCommand": "bash .devcontainer/setup-cluster.sh",
+
+  // 6. POST-START: En reopen/restart solo arranca minikube (el cluster ya está instalado)
+  "postStartCommand": "minikube start --driver=docker --force"
+}

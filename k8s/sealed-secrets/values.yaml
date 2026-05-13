@@ -1,0 +1,2 @@
+# Valores por defecto son suficientes para dev
+# El controlador genera su propio keypair al arrancar

@@ -1,0 +1,32 @@
+apisix:
+  service:
+    type: ClusterIP
+    http:
+      enabled: true
+      servicePort: 80
+      containerPort: 9080
+    tls:
+      enabled: false
+
+ingress-controller:
+  enabled: true
+  config:
+    provider:
+      type: apisix
+      apisix_endpoint: "http://apisix-admin.apisix.svc.cluster.local:9180"
+      admin_key: "edd1c9f034335f136f87ad84b625c8f1"
+      admin_api_version: "v3"
+      sync_period: "1m"
+      init_sync_delay: "0s"
+    kubernetes:
+      ingressClass: apisix
+      ingressPublishService: "apisix/apisix-gateway"
+
+dashboard:
+  enabled: false
+
+etcd:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: false

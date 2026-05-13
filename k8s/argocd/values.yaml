@@ -1,0 +1,3 @@
+configs:
+  params:
+    server.insecure: "true"  # TLS terminado en el ingress, ArgoCD sirve HTTP
