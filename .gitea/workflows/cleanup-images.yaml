@@ -1,0 +1,66 @@
+name: "Cleanup Old Harbor Images"
+
+# ─────────────────────────────────────────────────────────────
+# Flow 3: Queries ArgoCD to find which images are in use,
+# then removes old versions from Harbor, keeping only:
+#   1. The currently deployed version
+#   2. The immediately previous version (emergency rollback)
+#
+# Schedule: daily at 02:00 UTC or manual trigger.
+# ─────────────────────────────────────────────────────────────
+#
+# Required secrets in Gitea:
+#   ARGOCD_URL    ArgoCD URL  e.g. http://argocd.127.0.0.1.nip.io:8080
+#   ARGOCD_USER   ArgoCD username
+#   ARGOCD_PASS   ArgoCD password/token
+#   HARBOR_URL    Harbor URL  e.g. registry.127.0.0.1.nip.io:8080
+#   HARBOR_USER   Harbor username
+#   HARBOR_PASS   Harbor password/token
+#
+# Optional:
+#   HARBOR_REGISTRY_HOST  Set this if the registry host in ArgoCD images
+#                         differs from HARBOR_URL (domain alias)
+# ─────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # Daily at 02:00 UTC
+  workflow_dispatch:       # Manual trigger from Gitea UI
+
+jobs:
+  cleanup:
+    name: "Query ArgoCD → Clean Harbor"
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ops repository ────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # ── 2. Install Python dependencies ───────────────────────
+      - name: Install dependencies
+        run: |
+          pip install --quiet requests
+
+      # ── 3. Run cleanup script ─────────────────────────────────
+      - name: Run image cleanup
+        env:
+          ARGOCD_URL:            ${{ secrets.ARGOCD_URL }}
+          ARGOCD_USER:           ${{ secrets.ARGOCD_USER }}
+          ARGOCD_PASS:           ${{ secrets.ARGOCD_PASS }}
+          HARBOR_URL:            ${{ secrets.HARBOR_URL }}
+          HARBOR_USER:           ${{ secrets.HARBOR_USER }}
+          HARBOR_PASS:           ${{ secrets.HARBOR_PASS }}
+          HARBOR_REGISTRY_HOST:  ${{ secrets.HARBOR_REGISTRY_HOST }}
+        run: |
+          python3 cicd/scripts/cleanup_images.py
+
+      # ── 4. Summary ────────────────────────────────────────────
+      - name: Summary
+        if: always()
+        run: |
+          echo "════════════════════════════════════"
+          echo "  Cleanup finished"
+          echo "  Date   : $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "  Trigger: ${{ gitea.event_name }}"
+          echo "════════════════════════════════════"

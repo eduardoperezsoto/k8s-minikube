@@ -58,15 +58,22 @@ helm upgrade --install argocd argo/argo-cd -n argocd \
   -f /workspaces/minikube/k8s/argocd/values.yaml --wait --timeout 5m
 kubectl apply -f /workspaces/minikube/k8s/argocd/ingress.yaml
 
+ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
+
 echo ""
 echo "============================================"
 echo "Cluster listo. Para acceder desde tu PC ejecuta:"
 echo "  kubectl port-forward -n apisix svc/apisix-gateway 8080:80"
 echo ""
-echo "  ArgoCD: http://argocd.127.0.0.1.nip.io:8080"
 echo "  Gitea:  http://gitea.127.0.0.1.nip.io:8080"
-echo "  Harbor: http://registry.127.0.0.1.nip.io:8080"
+echo "    user: admin"
+echo "    pass: admin123"
 echo ""
-echo "  Contraseña ArgoCD:"
-echo "  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+echo "  Harbor: http://registry.127.0.0.1.nip.io:8080"
+echo "    user: admin"
+echo "    pass: Harbor12345"
+echo ""
+echo "  ArgoCD: http://argocd.127.0.0.1.nip.io:8080"
+echo "    user: admin"
+echo "    pass: ${ARGOCD_PASS}"
 echo "============================================"
