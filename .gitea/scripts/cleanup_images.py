@@ -75,7 +75,7 @@ def get_images_in_use(token: str) -> dict[str, str]:
 # ─── Harbor ───────────────────────────────────────────────────────────────────
 
 def _harbor(method: str, path: str, **kwargs):
-    url = f"{HARBOR_URL}{path}"
+    url = f"https://{HARBOR_URL}{path}"
     resp = requests.request(
         method,
         url,

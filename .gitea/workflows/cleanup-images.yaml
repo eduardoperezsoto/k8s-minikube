@@ -7,10 +7,10 @@ name: "Cleanup old Harbor images"
 #   2. The immediately previous version (emergency rollback)
 # ─────────────────────────────────────────────────────────────
 # Required secrets in Gitea:
-#   ARGOCD_URL    ArgoCD URL
+#   ARGOCD_URL    ArgoCD URL (ej: https://argocd.cnie.internal)
 #   ARGOCD_USER   ArgoCD username
 #   ARGOCD_PASS   ArgoCD password/token
-#   HARBOR_URL    Harbor URL
+#   HARBOR_URL    Harbor URL (ej: harbor.cnie.internal)
 #   HARBOR_USER   Harbor username
 #   HARBOR_PASS   Harbor password/token
 # ─────────────────────────────────────────────────────────────
@@ -33,6 +33,7 @@ jobs:
       # ── 2. Install Python dependencies ───────────────────────
       - name: Install dependencies
         run: |
+          python3 --version || apt-get install -y python3
           pip install --quiet requests
 
       # ── 3. Run cleanup script ─────────────────────────────────
