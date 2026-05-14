@@ -21,4 +21,10 @@ kubectl create secret generic act-runner-token \
 kubectl apply -f /workspaces/minikube/k8s/gitea-runner/deployment.yaml
 kubectl rollout status deployment/act-runner -n gitea --timeout=3m
 
+# Allow job containers to push to Harbor: the Docker daemon on the minikube node
+# resolves the hostname via /etc/hosts; the ClusterIP falls within 10.96.0.0/12
+# which minikube already marks as insecure-registry, so no daemon restart is needed.
+HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
+minikube ssh -- "echo '${HARBOR_IP} harbor.harbor.svc.cluster.local' | sudo tee -a /etc/hosts"
+
 echo "==> Gitea Act Runner ready"

@@ -1,4 +1,4 @@
-name: "Build, Scan and Push to Harbor"
+name: "Build, scan and push to Harbor"
 
 # ─────────────────────────────────────────────────────────────
 # Builds the Docker image, scans it with Trivy and
@@ -38,10 +38,7 @@ jobs:
           IMAGE="${{ secrets.REGISTRY_URL }}/${{ secrets.REGISTRY_PROJECT }}/${{ gitea.event.repository.name }}"
           echo "IMAGE_BASE=${IMAGE}" >> $GITHUB_ENV
 
-          docker build \
-            -t "${IMAGE}:${{ gitea.sha }}" \
-            -t "${IMAGE}:latest" \
-            .
+          docker build -t "${IMAGE}:${{ gitea.sha }}" -t "${IMAGE}:latest" .
 
           echo "Image built:"
           echo "  ${IMAGE}:${{ gitea.sha }}"

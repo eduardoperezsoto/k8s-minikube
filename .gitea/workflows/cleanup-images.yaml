@@ -53,4 +53,4 @@ jobs:
           HARBOR_PASS:           ${{ secrets.HARBOR_PASS }}
           HARBOR_REGISTRY_HOST:  ${{ secrets.HARBOR_REGISTRY_HOST }}
         run: |
-          python3 cicd/scripts/cleanup_images.py
+          python3 .gitea/scripts/cleanup_images.py
