@@ -1,0 +1,27 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: gitea-listener
+  namespace: ci
+spec:
+  serviceAccountName: tekton-triggers-sa
+  triggers:
+    - name: gitea-push-main
+      interceptors:
+        # Only trigger on pushes to main or master branches
+        - ref:
+            name: cel
+          params:
+            - name: filter
+              value: >
+                body.ref == 'refs/heads/main' ||
+                body.ref == 'refs/heads/master'
+            # Prevent triggering on tag pushes or empty commits
+            - name: overlays
+              value:
+                - key: truncated_sha
+                  expression: "body.after.truncate(8)"
+      bindings:
+        - ref: gitea-push-binding
+      template:
+        ref: build-scan-push-template

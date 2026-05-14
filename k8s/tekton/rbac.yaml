@@ -1,0 +1,40 @@
+# ServiceAccount used by PipelineRuns and the cleanup CronJob.
+# harbor-credentials is listed here so the credential initializer sidecar
+# injects it automatically into every Task container.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-pipeline-sa
+  namespace: ci
+secrets:
+  - name: harbor-credentials
+
+---
+# Allow the SA to create/read TaskRuns and PipelineRuns in the ci namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-pipeline-role
+  namespace: ci
+rules:
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns", "taskruns", "pipelines", "tasks"]
+    verbs: ["create", "get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps", "serviceaccounts"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-pipeline-rolebinding
+  namespace: ci
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-pipeline-role
+subjects:
+  - kind: ServiceAccount
+    name: tekton-pipeline-sa
+    namespace: ci

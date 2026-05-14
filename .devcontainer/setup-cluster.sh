@@ -15,17 +15,17 @@ helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
 helm repo add external-dns   https://kubernetes-sigs.github.io/external-dns/
 helm repo update
 
-echo "==> 3. Instalando cert-manager..."
-kubectl create namespace cert-manager 2>/dev/null || true
-helm upgrade --install cert-manager jetstack/cert-manager -n cert-manager \
-  -f /workspaces/minikube/k8s/cert-manager/values.yaml --wait --timeout 5m
-kubectl wait --for=condition=available --timeout=3m -n cert-manager deployment/cert-manager-webhook
-kubectl apply -f /workspaces/minikube/k8s/cert-manager/cluster-issuer.yaml
+# echo "==> 3. Instalando cert-manager..."
+# kubectl create namespace cert-manager 2>/dev/null || true
+# helm upgrade --install cert-manager jetstack/cert-manager -n cert-manager \
+#   -f /workspaces/minikube/k8s/cert-manager/values.yaml --wait --timeout 5m
+# kubectl wait --for=condition=available --timeout=3m -n cert-manager deployment/cert-manager-webhook
+# kubectl apply -f /workspaces/minikube/k8s/cert-manager/cluster-issuer.yaml
 
-echo "==> 4. Instalando Sealed Secrets..."
-kubectl create namespace sealed-secrets 2>/dev/null || true
-helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets -n sealed-secrets \
-  -f /workspaces/minikube/k8s/sealed-secrets/values.yaml --wait --timeout 3m
+# echo "==> 4. Instalando Sealed Secrets..."
+# kubectl create namespace sealed-secrets 2>/dev/null || true
+# helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets -n sealed-secrets \
+#   -f /workspaces/minikube/k8s/sealed-secrets/values.yaml --wait --timeout 3m
 
 echo "==> 5. Instalando APISIX..."
 kubectl create namespace apisix 2>/dev/null || true
@@ -34,11 +34,11 @@ helm upgrade --install apisix apisix/apisix -n apisix \
 kubectl apply -f /workspaces/minikube/k8s/apisix/gateway-proxy.yaml
 kubectl apply -f /workspaces/minikube/k8s/apisix/ingressclass.yaml
 
-echo "==> 6. Instalando External-DNS (dry-run, no bloquea)..."
-kubectl create namespace external-dns 2>/dev/null || true
-helm upgrade --install external-dns external-dns/external-dns -n external-dns \
-  -f /workspaces/minikube/k8s/external-dns/values.yaml --timeout 3m || \
-  echo "    [WARN] External-DNS no está listo (requiere proveedor DNS real para funcionar)"
+# echo "==> 6. Instalando External-DNS (dry-run, no bloquea)..."
+# kubectl create namespace external-dns 2>/dev/null || true
+# helm upgrade --install external-dns external-dns/external-dns -n external-dns \
+#   -f /workspaces/minikube/k8s/external-dns/values.yaml --timeout 3m || \
+#   echo "    [WARN] External-DNS no está listo (requiere proveedor DNS real para funcionar)"
 
 echo "==> 7. Instalando Gitea..."
 kubectl create namespace gitea 2>/dev/null || true
@@ -57,16 +57,121 @@ kubectl create secret docker-registry harbor-pull-secret \
   --docker-username=admin --docker-password=Harbor12345 \
   -n default --dry-run=client -o yaml | kubectl apply -f -
 
+# Crear proyecto Harbor (idempotente — 409 si ya existe)
+kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
+  -w "  Crear proyecto Harbor 'ednel': HTTP %{http_code}\n" \
+  -X POST \
+  -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"project_name":"ednel","public":false}' \
+  "http://localhost:8080/api/v2.0/projects" || true
+
 echo "==> 9. Instalando ArgoCD..."
 kubectl create namespace argocd 2>/dev/null || true
 helm upgrade --install argocd argo/argo-cd -n argocd \
   -f /workspaces/minikube/k8s/argocd/values.yaml --wait --timeout 5m
 kubectl apply -f /workspaces/minikube/k8s/argocd/ingress.yaml
 
-echo "==> 10. Instalando Gitea Act Runner..."
-/workspaces/minikube/.devcontainer/install-gitea-runner.sh
+echo "==> 10. Publicando repos en Gitea (infra + app)..."
+kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
+PF_PID=$!
+sleep 3
+
+GITEA_AUTH="Authorization: Basic $(echo -n 'admin:admin123' | base64)"
+
+# Crear repos
+curl -s -o /dev/null -w "  Crear repo infra: HTTP %{http_code}\n" \
+  -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
+  -d '{"name":"infra","private":false,"auto_init":false}' \
+  "http://localhost:3000/api/v1/user/repos" || true
+
+curl -s -o /dev/null -w "  Crear repo app:   HTTP %{http_code}\n" \
+  -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
+  -d '{"name":"app","private":false,"auto_init":false}' \
+  "http://localhost:3000/api/v1/user/repos" || true
+
+# Push k8s/ → repo infra (snapshot del estado actual, sin tocar el repo externo)
+INFRA_TMP=$(mktemp -d)
+cp -r /workspaces/minikube/k8s/. "${INFRA_TMP}/"
+git -C "${INFRA_TMP}" init
+git -C "${INFRA_TMP}" config user.email "setup@local"
+git -C "${INFRA_TMP}" config user.name "Setup"
+git -C "${INFRA_TMP}" add -A
+git -C "${INFRA_TMP}" commit -m "infra snapshot"
+git -C "${INFRA_TMP}" remote add gitea http://admin:admin123@localhost:3000/admin/infra.git
+git -C "${INFRA_TMP}" push gitea main --force
+rm -rf "${INFRA_TMP}"
+
+# Push app/
+git -C /workspaces/minikube/app remote set-url origin http://admin:admin123@localhost:3000/admin/app.git 2>/dev/null || \
+  git -C /workspaces/minikube/app remote add origin http://admin:admin123@localhost:3000/admin/app.git
+git -C /workspaces/minikube/app push origin main --force
+
+kill $PF_PID
+wait $PF_PID 2>/dev/null || true
+
+echo "==> 11. Instalando Tekton Pipelines, Triggers y Dashboard..."
+kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+kubectl wait --for=condition=available --timeout=5m \
+  -n tekton-pipelines deployment/tekton-pipelines-controller
+kubectl wait --for=condition=available --timeout=5m \
+  -n tekton-pipelines deployment/tekton-pipelines-webhook
+kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
+kubectl wait --for=condition=available --timeout=5m \
+  -n tekton-pipelines deployment/tekton-triggers-controller
+kubectl wait --for=condition=available --timeout=5m \
+  -n tekton-pipelines deployment/tekton-triggers-webhook
+kubectl apply -f https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
+kubectl wait --for=condition=available --timeout=3m \
+  -n tekton-pipelines deployment/tekton-dashboard
+
+echo "==> 12. Registrando ArgoCD Applications..."
+kubectl apply -f /workspaces/minikube/k8s/argocd/apps/
+
+# Allow Harbor containers to push: the ClusterIP is within 10.96.0.0/12
+# which minikube already marks as insecure-registry, so no daemon restart needed.
+HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
+minikube ssh -- "echo '${HARBOR_IP} harbor.harbor.svc.cluster.local' | sudo tee -a /etc/hosts"
+
+echo "==> 14. Configurando webhook en Gitea..."
+# Wait for the EventListener Service to be ready before registering the webhook
+kubectl wait --for=condition=available --timeout=2m \
+  -n ci deployment/el-gitea-listener 2>/dev/null || true
+
+# Register the webhook via Gitea API for every repository in the admin account
+for REPO in $(curl -s \
+  -H "Authorization: Basic $(echo -n 'admin:admin123' | base64)" \
+  "http://gitea-http.gitea.svc.cluster.local:3000/api/v1/repos/search?limit=50" \
+  | jq -r '.data[].name' 2>/dev/null); do
+  curl -s -o /dev/null -w "  Webhook → ${REPO}: %{http_code}\n" \
+    -X POST \
+    -H "Authorization: Basic $(echo -n 'admin:admin123' | base64)" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "type": "gitea",
+      "active": true,
+      "events": ["push"],
+      "config": {
+        "url": "http://el-gitea-listener.ci.svc.cluster.local:8080",
+        "content_type": "json"
+      }
+    }' \
+    "http://gitea-http.gitea.svc.cluster.local:3000/api/v1/repos/admin/${REPO}/hooks"
+done
 
 ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
+
+echo "==> 15. Configurando secret de limpieza de imágenes..."
+kubectl create namespace ci 2>/dev/null || true
+kubectl create secret generic cleanup-credentials \
+  --from-literal=argocd-url=http://argocd-server.argocd.svc.cluster.local \
+  --from-literal=argocd-user=admin \
+  --from-literal=argocd-pass="${ARGOCD_PASS}" \
+  --from-literal=harbor-url=http://harbor.harbor.svc.cluster.local:80 \
+  --from-literal=harbor-user=admin \
+  --from-literal=harbor-pass=Harbor12345 \
+  -n ci --dry-run=client -o yaml | kubectl apply -f -
 
 echo ""
 echo "============================================"
@@ -84,4 +189,6 @@ echo ""
 echo "  ArgoCD: http://argocd.127.0.0.1.nip.io:8080"
 echo "    user: admin"
 echo "    pass: ${ARGOCD_PASS}"
+echo ""
+echo "  Tekton Dashboard: http://tekton.127.0.0.1.nip.io:8080"
 echo "============================================"

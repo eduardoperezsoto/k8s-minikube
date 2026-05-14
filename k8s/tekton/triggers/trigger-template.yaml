@@ -1,0 +1,46 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: build-scan-push-template
+  namespace: ci
+spec:
+  params:
+    - name: revision
+    - name: repo-name
+    - name: repo-owner
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        # generateName ensures unique names for each push event
+        generateName: build-scan-push-
+        namespace: ci
+      spec:
+        pipelineRef:
+          name: build-scan-push
+        serviceAccountName: tekton-pipeline-sa
+        params:
+          - name: repo-url
+            # Use the internal Gitea address so the runner pod doesn't need
+            # to leave the cluster or go through the ingress.
+            value: http://gitea-http.gitea.svc.cluster.local:3000/$(tt.params.repo-owner)/$(tt.params.repo-name).git
+          - name: revision
+            value: $(tt.params.revision)
+          - name: image-name
+            value: harbor.harbor.svc.cluster.local:80/ednel/$(tt.params.repo-name)
+        workspaces:
+          # Ephemeral PVC per PipelineRun — deleted automatically when the run finishes
+          - name: source
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                resources:
+                  requests:
+                    storage: 1Gi
+          # Docker credentials for Harbor (push + scan)
+          - name: dockerconfig
+            secret:
+              secretName: harbor-credentials
+              items:
+                - key: .dockerconfigjson
+                  path: config.json

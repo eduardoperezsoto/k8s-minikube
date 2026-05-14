@@ -1,0 +1,52 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: harbor-cleanup
+  namespace: ci
+spec:
+  description: >
+    Queries ArgoCD for deployed images and removes old versions from Harbor,
+    keeping the currently deployed version and the previous one (rollback target).
+  steps:
+    - name: cleanup
+      image: python:3.11-slim
+      command: [python3, /scripts/cleanup_images.py]
+      env:
+        - name: ARGOCD_URL
+          valueFrom:
+            secretKeyRef:
+              name: cleanup-credentials
+              key: argocd-url
+        - name: ARGOCD_USER
+          valueFrom:
+            secretKeyRef:
+              name: cleanup-credentials
+              key: argocd-user
+        - name: ARGOCD_PASS
+          valueFrom:
+            secretKeyRef:
+              name: cleanup-credentials
+              key: argocd-pass
+        - name: HARBOR_URL
+          valueFrom:
+            secretKeyRef:
+              name: cleanup-credentials
+              key: harbor-url
+        - name: HARBOR_USER
+          valueFrom:
+            secretKeyRef:
+              name: cleanup-credentials
+              key: harbor-user
+        - name: HARBOR_PASS
+          valueFrom:
+            secretKeyRef:
+              name: cleanup-credentials
+              key: harbor-pass
+      volumeMounts:
+        - name: script
+          mountPath: /scripts
+  volumes:
+    - name: script
+      configMap:
+        name: cleanup-script
+        defaultMode: 0755

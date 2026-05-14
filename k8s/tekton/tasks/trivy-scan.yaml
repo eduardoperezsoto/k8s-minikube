@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: trivy-scan
+  namespace: ci
+spec:
+  description: >
+    Scans an image already pushed to Harbor with Trivy.
+    Fails the Task (exit code 1) if CRITICAL or HIGH vulnerabilities are found.
+  params:
+    - name: image
+      description: "Full image ref with tag to scan, e.g. harbor.harbor.svc.cluster.local:80/ednel/app:abc123"
+    - name: severity
+      description: Comma-separated list of severities that cause failure
+      default: "CRITICAL,HIGH"
+  steps:
+    - name: scan
+      image: aquasec/trivy:latest
+      env:
+        # Harbor runs over plain HTTP — tell Trivy to skip TLS verification
+        - name: TRIVY_INSECURE
+          value: "true"
+        - name: TRIVY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: harbor-credentials
+              key: username
+              optional: true
+        - name: TRIVY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: harbor-credentials
+              key: password
+              optional: true
+      script: |
+        #!/bin/sh
+        set -e
+        echo "Scanning $(params.image) for $(params.severity) vulnerabilities..."
+        trivy image \
+          --severity "$(params.severity)" \
+          --exit-code 1 \
+          --format table \
+          --no-progress \
+          "$(params.image)"
+        echo "Scan passed: no $(params.severity) vulnerabilities found."

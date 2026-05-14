@@ -21,7 +21,7 @@ import sys
 import requests
 from urllib.parse import quote
 
-requests.packages.urllib3.disable_warnings()  # Harbor may use self-signed TLS
+requests.packages.urllib3.disable_warnings()
 
 
 # ─── Config ───────────────────────────────────────────────────────────────────
@@ -48,7 +48,6 @@ def argocd_login() -> str:
 
 
 def get_images_in_use(token: str) -> dict[str, str]:
-    """Return {image_ref_without_tag: deployed_tag}."""
     headers = {"Authorization": f"Bearer {token}"}
     resp = requests.get(
         f"{ARGOCD_URL}/api/v1/applications",
@@ -77,8 +76,7 @@ def get_images_in_use(token: str) -> dict[str, str]:
 def _harbor(method: str, path: str, **kwargs):
     url = f"{HARBOR_URL}{path}"
     resp = requests.request(
-        method,
-        url,
+        method, url,
         auth=(HARBOR_USER, HARBOR_PASS),
         verify=False,
         timeout=30,
@@ -102,12 +100,11 @@ def _harbor_all(path: str, **params) -> list:
 
 def get_projects() -> list[str]:
     items = _harbor_all("/api/v2.0/projects")
-    return [p["name"] for p in items if not p.get("registry_id")]  # skip proxy caches
+    return [p["name"] for p in items if not p.get("registry_id")]
 
 
 def get_repositories(project: str) -> list[str]:
     items = _harbor_all(f"/api/v2.0/projects/{project}/repositories")
-    # Harbor returns "project/repo"; strip the project prefix
     return [r["name"].split("/", 1)[-1] for r in items]
 
 
@@ -128,12 +125,10 @@ def delete_artifact(project: str, repo: str, digest: str) -> None:
 # ─── Retention logic ──────────────────────────────────────────────────────────
 
 def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -> tuple[int, int]:
-    """Apply retention policy to one Harbor repository. Returns (deleted, kept)."""
     harbor_registry = HARBOR_URL.split("://")[-1]
     full_ref = f"{harbor_registry}/{project}/{repo}"
     artifacts_raw = get_artifacts(project, repo)
 
-    # Keep only versioned artifacts (skip untagged and the floating 'latest' tag)
     versioned = []
     for a in artifacts_raw:
         tags = [t["name"] for t in (a.get("tags") or []) if t["name"] != "latest"]
@@ -149,7 +144,6 @@ def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -
         print(f"  SKIP  {full_ref}: no versioned artifacts found")
         return 0, 0
 
-    # Sort by push date descending (newest first)
     versioned.sort(key=lambda x: x["push_time"], reverse=True)
 
     current_tag = images_in_use.get(full_ref)
@@ -165,11 +159,9 @@ def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -
         print(f"  WARN  {full_ref}: deployed tag '{current_tag}' not found in Harbor, skipping deletion")
         return 0, len(versioned)
 
-    # Keep: all versions newer than deployed (not yet rolled out) +
-    #        deployed version + the one immediately before it (rollback target)
-    keep = set(range(current_idx + 1))  # indexes 0..current_idx (newer + deployed)
+    keep = set(range(current_idx + 1))
     if current_idx + 1 < len(versioned):
-        keep.add(current_idx + 1)       # rollback target
+        keep.add(current_idx + 1)
 
     deleted = kept = 0
     for i, artifact in enumerate(versioned):

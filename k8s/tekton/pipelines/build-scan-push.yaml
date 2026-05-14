@@ -1,0 +1,78 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build-scan-push
+  namespace: ci
+spec:
+  description: >
+    CI pipeline: clone → build & push SHA tag → Trivy scan → promote :latest.
+    The :latest tag is only applied after a clean Trivy scan, so ArgoCD never
+    picks up a vulnerable image automatically.
+  params:
+    - name: repo-url
+      description: Internal Gitea clone URL (http://gitea-http.gitea.svc.cluster.local:3000/...)
+    - name: revision
+      description: Git commit SHA
+    - name: image-name
+      description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
+    - name: harbor-project
+      description: Harbor project name
+      default: ednel
+
+  workspaces:
+    - name: source
+      description: Shared workspace for the cloned source code
+    - name: dockerconfig
+      description: docker config.json for Harbor (bound to harbor-credentials secret)
+
+  tasks:
+    # ── 1. Clone ─────────────────────────────────────────────
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.revision)
+      workspaces:
+        - name: output
+          workspace: source
+
+    # ── 2. Build & push with SHA tag ─────────────────────────
+    - name: build-push
+      taskRef:
+        name: kaniko-build-push
+      runAfter: [git-clone]
+      params:
+        - name: image
+          value: $(params.image-name)
+        - name: tag
+          value: $(params.revision)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: dockerconfig
+          workspace: dockerconfig
+
+    # ── 3. Trivy vulnerability scan ───────────────────────────
+    - name: trivy-scan
+      taskRef:
+        name: trivy-scan
+      runAfter: [build-push]
+      params:
+        - name: image
+          value: $(params.image-name):$(params.revision)
+
+    # ── 4. Promote to :latest only after a clean scan ─────────
+    - name: retag-latest
+      taskRef:
+        name: retag-image
+      runAfter: [trivy-scan]
+      params:
+        - name: image
+          value: $(params.image-name)
+        - name: source-tag
+          value: $(params.revision)
+        - name: target-tag
+          value: latest

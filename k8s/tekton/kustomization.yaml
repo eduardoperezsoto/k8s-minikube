@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - dashboard-ingress.yaml
+  - secrets/harbor-credentials.yaml
+  - tasks/git-clone.yaml
+  - tasks/kaniko-build-push.yaml
+  - tasks/trivy-scan.yaml
+  - tasks/retag-image.yaml
+  - tasks/harbor-cleanup.yaml
+  - pipelines/build-scan-push.yaml
+  - pipelines/harbor-cleanup.yaml
+  - triggers/rbac.yaml
+  - triggers/trigger-binding.yaml
+  - triggers/trigger-template.yaml
+  - triggers/event-listener.yaml
+  - triggers/ingress.yaml
+  - cleanup/cronjob.yaml
+
+configMapGenerator:
+  - name: cleanup-script
+    namespace: ci
+    files:
+      - cleanup_images.py=cleanup/cleanup_images.py
+    options:
+      disableNameSuffixHash: true

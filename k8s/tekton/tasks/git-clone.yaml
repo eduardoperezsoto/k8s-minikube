@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: ci
+spec:
+  params:
+    - name: url
+      description: Git repository URL (internal Gitea address preferred)
+    - name: revision
+      description: Git commit SHA or branch to check out
+      default: main
+  workspaces:
+    - name: output
+      description: Workspace where the source is cloned
+  steps:
+    - name: clone
+      image: alpine/git:latest
+      script: |
+        #!/bin/sh
+        set -e
+        git clone "$(params.url)" "$(workspaces.output.path)"
+        cd "$(workspaces.output.path)"
+        git checkout "$(params.revision)"
+        echo "Cloned $(params.url) @ $(params.revision)"
