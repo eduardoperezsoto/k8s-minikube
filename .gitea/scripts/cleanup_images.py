@@ -59,9 +59,9 @@ def get_images_in_use(token: str) -> dict[str, str]:
     resp.raise_for_status()
 
     in_use: dict[str, str] = {}
-    for app in resp.json().get("items", []):
+    for app in resp.json().get("items") or []:
         app_name = app["metadata"]["name"]
-        images = app.get("status", {}).get("summary", {}).get("images", [])
+        images = app.get("status", {}).get("summary", {}).get("images") or []
         for image in images:
             if ":" not in image:
                 continue
@@ -75,7 +75,7 @@ def get_images_in_use(token: str) -> dict[str, str]:
 # ─── Harbor ───────────────────────────────────────────────────────────────────
 
 def _harbor(method: str, path: str, **kwargs):
-    url = f"https://{HARBOR_URL}{path}"
+    url = f"{HARBOR_URL}{path}"
     resp = requests.request(
         method,
         url,

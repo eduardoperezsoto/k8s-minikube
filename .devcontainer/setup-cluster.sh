@@ -52,6 +52,11 @@ helm upgrade --install harbor harbor/harbor -n harbor \
   -f /workspaces/minikube/k8s/harbor/values.yaml --wait --timeout 10m
 kubectl apply -f /workspaces/minikube/k8s/harbor/ingress.yaml
 
+kubectl create secret docker-registry harbor-pull-secret \
+  --docker-server=harbor.harbor.svc.cluster.local:80 \
+  --docker-username=admin --docker-password=Harbor12345 \
+  -n default --dry-run=client -o yaml | kubectl apply -f -
+
 echo "==> 9. Instalando ArgoCD..."
 kubectl create namespace argocd 2>/dev/null || true
 helm upgrade --install argocd argo/argo-cd -n argocd \

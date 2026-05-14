@@ -10,7 +10,7 @@ name: "Cleanup old Harbor images"
 #   ARGOCD_URL    ArgoCD URL (ej: https://argocd.cnie.internal)
 #   ARGOCD_USER   ArgoCD username
 #   ARGOCD_PASS   ArgoCD password/token
-#   HARBOR_URL    Harbor URL (ej: harbor.cnie.internal)
+#   HARBOR_URL    Harbor URL  (ej: http://harbor.cnie.internal)
 #   HARBOR_USER   Harbor username
 #   HARBOR_PASS   Harbor password/token
 # ─────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ name: "Build, scan and push to Harbor"
 # are found.
 # ─────────────────────────────────────────────────────────────
 # Required secrets in Gitea:
-#   HARBOR_URL      Harbor URL (ej: harbor.cnie.internal)
+#   HARBOR_REGISTRY Harbor URL without scheme (ej: harbor.cnie.internal)
 #   HARBOR_USER     Harbor username
 #   HARBOR_PASS     Harbor password/token
 #   HARBOR_PROJECT  Harbor project name
@@ -35,7 +35,7 @@ jobs:
       # ── 2. Build Docker image ─────────────────────────────────
       - name: Build Docker image
         run: |
-          IMAGE="${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT }}/${{ gitea.event.repository.name }}"
+          IMAGE="${{ secrets.HARBOR_REGISTRY }}/${{ secrets.HARBOR_PROJECT }}/${{ gitea.event.repository.name }}"
           echo "IMAGE_BASE=${IMAGE}" >> $GITHUB_ENV
 
           docker build -t "${IMAGE}:${{ gitea.sha }}" -t "${IMAGE}:latest" .
@@ -65,7 +65,7 @@ jobs:
         if: gitea.event_name == 'push'
         run: |
           echo "${{ secrets.HARBOR_PASS }}" | docker login \
-            "${{ secrets.HARBOR_URL }}" \
+            "${{ secrets.HARBOR_REGISTRY }}" \
             -u "${{ secrets.HARBOR_USER }}" \
             --password-stdin
 
