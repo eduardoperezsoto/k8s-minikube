@@ -1,35 +1,28 @@
-name: "Cleanup Old Harbor Images"
+name: "Cleanup old Harbor images"
 
 # ─────────────────────────────────────────────────────────────
 # Queries ArgoCD to find which images are in use,
 # then removes old versions from Harbor, keeping only:
 #   1. The currently deployed version
 #   2. The immediately previous version (emergency rollback)
-#
-# Schedule: daily at 02:00 UTC or manual trigger.
 # ─────────────────────────────────────────────────────────────
-#
 # Required secrets in Gitea:
-#   ARGOCD_URL    ArgoCD URL  e.g. http://argocd.127.0.0.1.nip.io:8080
+#   ARGOCD_URL    ArgoCD URL
 #   ARGOCD_USER   ArgoCD username
 #   ARGOCD_PASS   ArgoCD password/token
-#   HARBOR_URL    Harbor URL  e.g. registry.127.0.0.1.nip.io:8080
+#   HARBOR_URL    Harbor URL
 #   HARBOR_USER   Harbor username
 #   HARBOR_PASS   Harbor password/token
-#
-# Optional:
-#   HARBOR_REGISTRY_HOST  Set this if the registry host in ArgoCD images
-#                         differs from HARBOR_URL (domain alias)
 # ─────────────────────────────────────────────────────────────
 
 on:
   schedule:
-    - cron: "0 2 * * *"   # Daily at 02:00 UTC
+    - cron: "0 2 * * *"    # Daily at 02:00 UTC
   workflow_dispatch:       # Manual trigger from Gitea UI
 
 jobs:
   cleanup:
-    name: "Query ArgoCD → Clean Harbor"
+    name: "Cleanup old Harbor images"
     runs-on: ubuntu-latest
 
     steps:
@@ -51,6 +44,5 @@ jobs:
           HARBOR_URL:            ${{ secrets.HARBOR_URL }}
           HARBOR_USER:           ${{ secrets.HARBOR_USER }}
           HARBOR_PASS:           ${{ secrets.HARBOR_PASS }}
-          HARBOR_REGISTRY_HOST:  ${{ secrets.HARBOR_REGISTRY_HOST }}
         run: |
           python3 .gitea/scripts/cleanup_images.py

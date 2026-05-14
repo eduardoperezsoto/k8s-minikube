@@ -8,12 +8,12 @@ Retention policy:
   - DELETE: everything else (newer undeployed versions + older ones)
 
 Required environment variables:
-  ARGOCD_URL    http://argocd.127.0.0.1.nip.io:8080
-  ARGOCD_USER   admin
-  ARGOCD_PASS   <password>
-  HARBOR_URL    registry.127.0.0.1.nip.io:8080
-  HARBOR_USER   admin
-  HARBOR_PASS   <password>
+  ARGOCD_URL
+  ARGOCD_USER
+  ARGOCD_PASS
+  HARBOR_URL
+  HARBOR_USER
+  HARBOR_PASS
 """
 
 import os
@@ -32,10 +32,6 @@ ARGOCD_PASS = os.environ["ARGOCD_PASS"]
 HARBOR_URL  = os.environ["HARBOR_URL"].rstrip("/")
 HARBOR_USER = os.environ["HARBOR_USER"]
 HARBOR_PASS = os.environ["HARBOR_PASS"]
-
-# Registry host prefix as it appears in ArgoCD image references.
-# Usually matches HARBOR_URL; override if a domain alias is in use.
-HARBOR_REGISTRY_HOST = os.environ.get("HARBOR_REGISTRY_HOST", HARBOR_URL)
 
 
 # ─── ArgoCD ───────────────────────────────────────────────────────────────────
@@ -79,7 +75,7 @@ def get_images_in_use(token: str) -> dict[str, str]:
 # ─── Harbor ───────────────────────────────────────────────────────────────────
 
 def _harbor(method: str, path: str, **kwargs):
-    url = f"http://{HARBOR_URL}{path}"
+    url = f"{HARBOR_URL}{path}"
     resp = requests.request(
         method,
         url,
@@ -92,29 +88,35 @@ def _harbor(method: str, path: str, **kwargs):
     return resp
 
 
+def _harbor_all(path: str, **params) -> list:
+    results, page = [], 1
+    while True:
+        resp = _harbor("GET", path, params={"page_size": 100, "page": page, **params})
+        batch = resp.json()
+        results.extend(batch)
+        if len(results) >= int(resp.headers.get("X-Total-Count", len(results))):
+            break
+        page += 1
+    return results
+
+
 def get_projects() -> list[str]:
-    resp = _harbor("GET", "/api/v2.0/projects", params={"page_size": 100})
-    return [p["name"] for p in resp.json() if not p.get("registry_id")]  # skip proxy caches
+    items = _harbor_all("/api/v2.0/projects")
+    return [p["name"] for p in items if not p.get("registry_id")]  # skip proxy caches
 
 
 def get_repositories(project: str) -> list[str]:
-    resp = _harbor(
-        "GET",
-        f"/api/v2.0/projects/{project}/repositories",
-        params={"page_size": 100},
-    )
+    items = _harbor_all(f"/api/v2.0/projects/{project}/repositories")
     # Harbor returns "project/repo"; strip the project prefix
-    return [r["name"].split("/", 1)[-1] for r in resp.json()]
+    return [r["name"].split("/", 1)[-1] for r in items]
 
 
 def get_artifacts(project: str, repo: str) -> list[dict]:
     encoded = quote(repo, safe="")
-    resp = _harbor(
-        "GET",
+    return _harbor_all(
         f"/api/v2.0/projects/{project}/repositories/{encoded}/artifacts",
-        params={"page_size": 100, "with_tag": True},
+        with_tag=True,
     )
-    return resp.json()
 
 
 def delete_artifact(project: str, repo: str, digest: str) -> None:
@@ -127,7 +129,7 @@ def delete_artifact(project: str, repo: str, digest: str) -> None:
 
 def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -> tuple[int, int]:
     """Apply retention policy to one Harbor repository. Returns (deleted, kept)."""
-    full_ref = f"{HARBOR_REGISTRY_HOST}/{project}/{repo}"
+    full_ref = f"{HARBOR_URL}/{project}/{repo}"
     artifacts_raw = get_artifacts(project, repo)
 
     # Keep only versioned artifacts (skip untagged and the floating 'latest' tag)
@@ -162,10 +164,11 @@ def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -
         print(f"  WARN  {full_ref}: deployed tag '{current_tag}' not found in Harbor, skipping deletion")
         return 0, len(versioned)
 
-    # Keep: deployed version + the one immediately before it by push date
-    keep = {current_idx}
+    # Keep: all versions newer than deployed (not yet rolled out) +
+    #        deployed version + the one immediately before it (rollback target)
+    keep = set(range(current_idx + 1))  # indexes 0..current_idx (newer + deployed)
     if current_idx + 1 < len(versioned):
-        keep.add(current_idx + 1)
+        keep.add(current_idx + 1)       # rollback target
 
     deleted = kept = 0
     for i, artifact in enumerate(versioned):
