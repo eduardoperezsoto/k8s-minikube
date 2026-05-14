@@ -129,7 +129,8 @@ def delete_artifact(project: str, repo: str, digest: str) -> None:
 
 def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -> tuple[int, int]:
     """Apply retention policy to one Harbor repository. Returns (deleted, kept)."""
-    full_ref = f"{HARBOR_URL}/{project}/{repo}"
+    harbor_registry = HARBOR_URL.split("://")[-1]
+    full_ref = f"{harbor_registry}/{project}/{repo}"
     artifacts_raw = get_artifacts(project, repo)
 
     # Keep only versioned artifacts (skip untagged and the floating 'latest' tag)
