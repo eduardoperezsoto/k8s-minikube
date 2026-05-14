@@ -13,7 +13,7 @@ git -C "${INFRA_TMP}" config user.name "Setup"
 git -C "${INFRA_TMP}" add -A
 git -C "${INFRA_TMP}" commit -m "infra snapshot"
 git -C "${INFRA_TMP}" remote add gitea http://admin:admin123@localhost:3000/admin/infra.git
-git -C "${INFRA_TMP}" push gitea main --force
+git -C "${INFRA_TMP}" push gitea HEAD:main --force
 rm -rf "${INFRA_TMP}"
 
 echo "==> Pushed. ArgoCD will sync tekton-ci and app automatically."

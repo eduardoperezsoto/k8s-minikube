@@ -99,13 +99,20 @@ git -C "${INFRA_TMP}" config user.name "Setup"
 git -C "${INFRA_TMP}" add -A
 git -C "${INFRA_TMP}" commit -m "infra snapshot"
 git -C "${INFRA_TMP}" remote add gitea http://admin:admin123@localhost:3000/admin/infra.git
-git -C "${INFRA_TMP}" push gitea main --force
+git -C "${INFRA_TMP}" push gitea HEAD:main --force
 rm -rf "${INFRA_TMP}"
 
 # Push app/
-git -C /workspaces/minikube/app remote set-url origin http://admin:admin123@localhost:3000/admin/app.git 2>/dev/null || \
-  git -C /workspaces/minikube/app remote add origin http://admin:admin123@localhost:3000/admin/app.git
-git -C /workspaces/minikube/app push origin main --force
+APP_TMP=$(mktemp -d)
+cp -r /workspaces/minikube/app/. "${APP_TMP}/"
+git -C "${APP_TMP}" init
+git -C "${APP_TMP}" config user.email "setup@local"
+git -C "${APP_TMP}" config user.name "Setup"
+git -C "${APP_TMP}" add -A
+git -C "${APP_TMP}" commit -m "app snapshot"
+git -C "${APP_TMP}" remote add gitea http://admin:admin123@localhost:3000/admin/app.git
+git -C "${APP_TMP}" push gitea HEAD:main --force
+rm -rf "${APP_TMP}"
 
 kill $PF_PID
 wait $PF_PID 2>/dev/null || true
