@@ -8,6 +8,7 @@ spec:
     - name: revision
     - name: repo-name
     - name: repo-owner
+    - name: harbor-project
   resourcetemplates:
     - apiVersion: tekton.dev/v1
       kind: PipelineRun
@@ -27,7 +28,7 @@ spec:
           - name: revision
             value: $(tt.params.revision)
           - name: image-name
-            value: harbor.harbor.svc.cluster.local:80/ednel/$(tt.params.repo-name)
+            value: harbor.harbor.svc.cluster.local:80/$(tt.params.harbor-project)/$(tt.params.repo-name)
         workspaces:
           # Ephemeral PVC per PipelineRun — deleted automatically when the run finishes
           - name: source

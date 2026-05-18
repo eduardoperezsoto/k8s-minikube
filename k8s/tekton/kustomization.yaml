@@ -7,12 +7,12 @@ resources:
   - dashboard-ingress.yaml
   - secrets/harbor-credentials.yaml
   - tasks/git-clone.yaml
-  - tasks/kaniko-build-push.yaml
+  - tasks/kaniko-build.yaml
   - tasks/trivy-scan.yaml
-  - tasks/retag-image.yaml
-  - tasks/old-images-cleanup.yaml
+  - tasks/skopeo-push.yaml
+  - tasks/cleanup-images.yaml
   - pipelines/build-scan-push.yaml
-  - pipelines/old-images-cleanup.yaml
+  - pipelines/cleanup-images.yaml
   - triggers/rbac.yaml
   - triggers/trigger-binding.yaml
   - triggers/trigger-template.yaml

@@ -1,19 +1,19 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: kaniko-build-push
+  name: kaniko-build
   namespace: ci
 spec:
   description: >
-    Builds a Docker image with Kaniko and pushes it to Harbor with the SHA tag.
-    Does NOT tag as :latest — that happens only after Trivy passes.
+    Builds a Docker image with Kaniko and saves it as image.tar on the source
+    workspace.
   params:
     - name: image
       type: string
-      description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
+      description: "Full image ref without tag, e.g. harbor.cnie.internal/project/app"
     - name: tag
       type: string
-      description: Image tag (commit SHA)
+      description: Image tag
     - name: dockerfile
       type: string
       description: Path to Dockerfile relative to the source workspace root
@@ -24,18 +24,15 @@ spec:
       default: "."
   workspaces:
     - name: source
-      description: Workspace containing the cloned source
-    - name: dockerconfig
-      description: Workspace with a config.json for the registry (mounted from harbor-credentials secret)
-      mountPath: /kaniko/.docker
+      description: Workspace containing the cloned source; image.tar is written here
   steps:
-    - name: build-and-push
-      image: gcr.io/kaniko-project/executor:latest
+    - name: build
+      image: gcr.io/kaniko-project/executor:v1.24.0
       command:
         - /kaniko/executor
       args:
         - --dockerfile=$(workspaces.source.path)/$(params.dockerfile)
         - --context=$(workspaces.source.path)/$(params.context)
         - --destination=$(params.image):$(params.tag)
-        - --insecure
-        - --skip-tls-verify
+        - --no-push
+        - --tarPath=$(workspaces.source.path)/image.tar

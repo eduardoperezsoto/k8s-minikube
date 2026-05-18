@@ -5,34 +5,26 @@ metadata:
   namespace: ci
 spec:
   description: >
-    Scans an image already pushed to Harbor with Trivy.
-    Fails the Task (exit code 1) if CRITICAL or HIGH vulnerabilities are found.
+    Scans the local image tarball with Trivy. Fails if CRITICAL or HIGH
+    vulnerabilities are found.
   params:
     - name: image
       type: string
-      description: "Full image ref with tag to scan, e.g. harbor.harbor.svc.cluster.local:80/ednel/app:abc123"
-    - name: severity
-      type: string
-      description: Comma-separated list of severities that cause failure
-      default: "CRITICAL,HIGH"
+      description: "Full image ref with tag — used only for display in logs"
   workspaces:
-    - name: dockerconfig
-      description: Docker config.json for Harbor authentication (mounted from harbor-credentials secret)
-      mountPath: /root/.docker
+    - name: source
+      description: Workspace containing image.tar
   steps:
     - name: scan
       image: aquasec/trivy:latest
-      env:
-        - name: TRIVY_INSECURE
-          value: "true"
       script: |
         #!/bin/sh
         set -e
-        echo "Scanning $(params.image) for $(params.severity) vulnerabilities..."
+        echo "Scanning $(params.image) for CRITICAL,HIGH vulnerabilities..."
         trivy image \
-          --severity "$(params.severity)" \
+          --severity CRITICAL,HIGH \
           --exit-code 1 \
           --format table \
           --no-progress \
-          "$(params.image)"
-        echo "Scan passed: no $(params.severity) vulnerabilities found."
+          --input "$(workspaces.source.path)/image.tar"
+        echo "Scan passed: no CRITICAL or HIGH vulnerabilities found."

@@ -4,10 +4,13 @@ metadata:
   name: git-clone
   namespace: ci
 spec:
+  description: >
+    Clones a Git repository and checks out the specified revision. The source is
+    written to the output workspace.
   params:
     - name: url
       type: string
-      description: Git repository URL (internal Gitea address preferred)
+      description: Git repository URL to clone
     - name: revision
       type: string
       description: Git commit SHA or branch to check out
@@ -17,7 +20,7 @@ spec:
       description: Workspace where the source is cloned
   steps:
     - name: clone
-      image: alpine/git:latest
+      image: alpine/git:2.49.1
       script: |
         #!/bin/sh
         set -e

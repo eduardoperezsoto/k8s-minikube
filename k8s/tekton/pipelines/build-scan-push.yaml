@@ -5,23 +5,18 @@ metadata:
   namespace: ci
 spec:
   description: >
-    CI pipeline: clone → build & push SHA tag → Trivy scan → promote :latest.
-    The :latest tag is only applied after a clean Trivy scan, so ArgoCD never
-    picks up a vulnerable image automatically.
+    Builds the Docker image, scans it with Trivy, and promotes it to latest
+    only if no CRITICAL or HIGH vulnerabilities are found.
   params:
     - name: repo-url
       type: string
-      description: Internal Gitea clone URL (http://gitea-http.gitea.svc.cluster.local:3000/...)
+      description: Gitea URL
     - name: revision
       type: string
       description: Git commit SHA
     - name: image-name
       type: string
-      description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
-    - name: harbor-project
-      type: string
-      description: Harbor project name
-      default: ednel
+      description: "Full image ref without tag, e.g. harbor.cnie.internal/project/app"
 
   workspaces:
     - name: source
@@ -30,7 +25,7 @@ spec:
       description: docker config.json for Harbor (bound to harbor-credentials secret)
 
   tasks:
-    # ── 1. Clone ─────────────────────────────────────────────
+    # ── 1. Clone repository ──────────────────────────────────────────────
     - name: git-clone
       taskRef:
         kind: Task
@@ -44,11 +39,11 @@ spec:
         - name: output
           workspace: source
 
-    # ── 2. Build & push with SHA tag ─────────────────────────
-    - name: build-push
+    # ── 2. Build image to local tarball  ──────
+    - name: build
       taskRef:
         kind: Task
-        name: kaniko-build-push
+        name: kaniko-build
       runAfter: [git-clone]
       params:
         - name: image
@@ -58,35 +53,33 @@ spec:
       workspaces:
         - name: source
           workspace: source
-        - name: dockerconfig
-          workspace: dockerconfig
 
-    # ── 3. Trivy vulnerability scan ───────────────────────────
+    # ── 3. Scan image  ────
     - name: trivy-scan
       taskRef:
         kind: Task
         name: trivy-scan
-      runAfter: [build-push]
+      runAfter: [build]
       params:
         - name: image
           value: $(params.image-name):$(params.revision)
       workspaces:
-        - name: dockerconfig
-          workspace: dockerconfig
+        - name: source
+          workspace: source
 
-    # ── 4. Promote to :latest only after a clean scan ─────────
-    - name: retag-latest
+    # ── 4. Push image to Harbor ─
+    - name: skopeo-push
       taskRef:
         kind: Task
-        name: retag-image
+        name: skopeo-push
       runAfter: [trivy-scan]
       params:
         - name: image
           value: $(params.image-name)
-        - name: source-tag
+        - name: tag
           value: $(params.revision)
-        - name: target-tag
-          value: latest
       workspaces:
+        - name: source
+          workspace: source
         - name: dockerconfig
           workspace: dockerconfig

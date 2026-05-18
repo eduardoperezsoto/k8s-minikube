@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: old-images-cleanup
+  name: cleanup-images
   namespace: ci
 spec:
   description: >

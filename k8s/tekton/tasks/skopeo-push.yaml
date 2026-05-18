@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: skopeo-push
+  namespace: ci
+spec:
+  description: >
+    Pushes the local image tarball to Harbor with the SHA tag and tags it as
+    :latest in a single step. Runs only after Trivy scan passes, so the
+    registry never receives a vulnerable image.
+  params:
+    - name: image
+      type: string
+      description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
+    - name: tag
+      type: string
+      description: Image tag (commit SHA)
+  workspaces:
+    - name: source
+      description: Workspace containing image.tar produced by kaniko-build
+    - name: dockerconfig
+      description: Docker config.json for Harbor authentication
+      mountPath: /workspace/dockerconfig
+  steps:
+    - name: push-and-tag
+      image: quay.io/skopeo/stable:v1.22.2
+      script: |
+        #!/bin/sh
+        set -e
+        skopeo copy \
+          oci-archive:$(workspaces.source.path)/image.tar \
+          docker://$(params.image):$(params.tag) \
+          --dest-tls-verify=false \
+          --dest-authfile=$(workspaces.dockerconfig.path)/config.json
+
+        skopeo copy \
+          docker://$(params.image):$(params.tag) \
+          docker://$(params.image):latest \
+          --src-tls-verify=false \
+          --dest-tls-verify=false \
+          --dest-authfile=$(workspaces.dockerconfig.path)/config.json

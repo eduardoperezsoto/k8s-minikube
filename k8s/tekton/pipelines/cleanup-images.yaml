@@ -1,0 +1,15 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: cleanup-images
+  namespace: ci
+spec:
+  description: >
+    Cleans up Harbor images, keeping undeployed builds newer than the deployed
+    version, the deployed version itself, and the previous one as rollback
+    target. Deletes everything older. Runs daily via CronJob at 02:00 or manually.
+  tasks:
+    - name: cleanup
+      taskRef:
+        kind: Task
+        name: cleanup-images

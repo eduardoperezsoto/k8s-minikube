@@ -3,9 +3,10 @@
 Cleanup old Harbor images.
 
 Retention policy:
+  - KEEP:   all versions newer than the currently deployed one (undeployed builds)
   - KEEP:   the version currently deployed by ArgoCD
   - KEEP:   the immediately previous version by push date (rollback target)
-  - DELETE: everything else (newer undeployed versions + older ones)
+  - DELETE: everything older than the previous version
 
 Required environment variables:
   ARGOCD_URL
