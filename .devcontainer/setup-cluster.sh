@@ -6,47 +6,27 @@ minikube delete --purge 2>/dev/null || true
 minikube start --driver=docker --force
 
 echo "==> 2. Añadiendo repos Helm..."
-helm repo add gitea-charts   https://dl.gitea.com/charts/
-helm repo add harbor         https://helm.goharbor.io
-helm repo add argo           https://argoproj.github.io/argo-helm
-helm repo add apisix         https://charts.apiseven.com
-helm repo add jetstack       https://charts.jetstack.io
-helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
-helm repo add external-dns   https://kubernetes-sigs.github.io/external-dns/
+helm repo add gitea-charts https://dl.gitea.com/charts/
+helm repo add harbor      https://helm.goharbor.io
+helm repo add argo        https://argoproj.github.io/argo-helm
+helm repo add apisix      https://charts.apiseven.com
 helm repo update
 
-# echo "==> 3. Instalando cert-manager..."
-# kubectl create namespace cert-manager 2>/dev/null || true
-# helm upgrade --install cert-manager jetstack/cert-manager -n cert-manager \
-#   -f /workspaces/minikube/k8s/cert-manager/values.yaml --wait --timeout 5m
-# kubectl wait --for=condition=available --timeout=3m -n cert-manager deployment/cert-manager-webhook
-# kubectl apply -f /workspaces/minikube/k8s/cert-manager/cluster-issuer.yaml
-
-# echo "==> 4. Instalando Sealed Secrets..."
-# kubectl create namespace sealed-secrets 2>/dev/null || true
-# helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets -n sealed-secrets \
-#   -f /workspaces/minikube/k8s/sealed-secrets/values.yaml --wait --timeout 3m
-
-echo "==> 5. Instalando APISIX..."
+echo "==> 3. Instalando APISIX..."
 kubectl create namespace apisix 2>/dev/null || true
 helm upgrade --install apisix apisix/apisix -n apisix \
   -f /workspaces/minikube/k8s/apisix/values.yaml --wait --timeout 10m
 kubectl apply -f /workspaces/minikube/k8s/apisix/gateway-proxy.yaml
 kubectl apply -f /workspaces/minikube/k8s/apisix/ingressclass.yaml
 
-# echo "==> 6. Instalando External-DNS (dry-run, no bloquea)..."
-# kubectl create namespace external-dns 2>/dev/null || true
-# helm upgrade --install external-dns external-dns/external-dns -n external-dns \
-#   -f /workspaces/minikube/k8s/external-dns/values.yaml --timeout 3m || \
-#   echo "    [WARN] External-DNS no está listo (requiere proveedor DNS real para funcionar)"
 
-echo "==> 7. Instalando Gitea..."
+echo "==> 4. Instalando Gitea..."
 kubectl create namespace gitea 2>/dev/null || true
 helm upgrade --install gitea gitea-charts/gitea -n gitea \
   -f /workspaces/minikube/k8s/gitea/values.yaml --wait --timeout 5m
 kubectl apply -f /workspaces/minikube/k8s/gitea/ingress.yaml
 
-echo "==> 8. Instalando Harbor..."
+echo "==> 5. Instalando Harbor..."
 kubectl create namespace harbor 2>/dev/null || true
 helm upgrade --install harbor harbor/harbor -n harbor \
   -f /workspaces/minikube/k8s/harbor/values.yaml --wait --timeout 10m
@@ -66,13 +46,13 @@ kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
   -d '{"project_name":"ednel","public":false}' \
   "http://localhost:8080/api/v2.0/projects" || true
 
-echo "==> 9. Instalando ArgoCD..."
+echo "==> 6. Instalando ArgoCD..."
 kubectl create namespace argocd 2>/dev/null || true
 helm upgrade --install argocd argo/argo-cd -n argocd \
   -f /workspaces/minikube/k8s/argocd/values.yaml --wait --timeout 5m
 kubectl apply -f /workspaces/minikube/k8s/argocd/ingress.yaml
 
-echo "==> 10. Publicando repos en Gitea (infra + app)..."
+echo "==> 7. Publicando repos en Gitea (infra + app)..."
 kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
 PF_PID=$!
 sleep 3
@@ -117,7 +97,7 @@ rm -rf "${APP_TMP}"
 kill $PF_PID
 wait $PF_PID 2>/dev/null || true
 
-echo "==> 11. Instalando Tekton Pipelines, Triggers y Dashboard..."
+echo "==> 8. Instalando Tekton Pipelines, Triggers y Dashboard..."
 kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 kubectl wait --for=condition=available --timeout=5m \
   -n tekton-pipelines deployment/tekton-pipelines-controller
@@ -136,15 +116,14 @@ kubectl -n tekton-pipelines get deployment tekton-dashboard -o json \
   | sed 's/--read-only=true/--read-only=false/' \
   | kubectl apply -f -
 
-echo "==> 12. Registrando ArgoCD Applications..."
+echo "==> 9. Registrando ArgoCD Applications..."
 kubectl apply -f /workspaces/minikube/k8s/argocd/apps/
 
 # Allow Harbor containers to push: the ClusterIP is within 10.96.0.0/12
-# which minikube already marks as insecure-registry, so no daemon restart needed.
 HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
 minikube ssh -- "echo '${HARBOR_IP} harbor.harbor.svc.cluster.local' | sudo tee -a /etc/hosts"
 
-echo "==> 14. Configurando webhook en Gitea..."
+echo "==> 10. Configurando webhook en Gitea..."
 kubectl wait --for=condition=available --timeout=2m \
   -n ci deployment/el-gitea-listener 2>/dev/null || true
 
@@ -179,7 +158,7 @@ wait $PF_PID 2>/dev/null || true
 
 ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
 
-echo "==> 15. Configurando secret de limpieza de imágenes..."
+echo "==> 11. Configurando secret de limpieza de imágenes..."
 kubectl create namespace ci 2>/dev/null || true
 kubectl create secret generic cleanup-credentials \
   --from-literal=argocd-url=http://argocd-server.argocd.svc.cluster.local \
