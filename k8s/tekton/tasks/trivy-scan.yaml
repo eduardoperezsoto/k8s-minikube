@@ -9,29 +9,22 @@ spec:
     Fails the Task (exit code 1) if CRITICAL or HIGH vulnerabilities are found.
   params:
     - name: image
+      type: string
       description: "Full image ref with tag to scan, e.g. harbor.harbor.svc.cluster.local:80/ednel/app:abc123"
     - name: severity
+      type: string
       description: Comma-separated list of severities that cause failure
       default: "CRITICAL,HIGH"
+  workspaces:
+    - name: dockerconfig
+      description: Docker config.json for Harbor authentication (mounted from harbor-credentials secret)
+      mountPath: /root/.docker
   steps:
     - name: scan
       image: aquasec/trivy:latest
       env:
-        # Harbor runs over plain HTTP — tell Trivy to skip TLS verification
         - name: TRIVY_INSECURE
           value: "true"
-        - name: TRIVY_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: harbor-credentials
-              key: username
-              optional: true
-        - name: TRIVY_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: harbor-credentials
-              key: password
-              optional: true
       script: |
         #!/bin/sh
         set -e

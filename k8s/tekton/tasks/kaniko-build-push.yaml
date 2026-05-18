@@ -9,13 +9,17 @@ spec:
     Does NOT tag as :latest — that happens only after Trivy passes.
   params:
     - name: image
+      type: string
       description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
     - name: tag
+      type: string
       description: Image tag (commit SHA)
     - name: dockerfile
+      type: string
       description: Path to Dockerfile relative to the source workspace root
       default: Dockerfile
     - name: context
+      type: string
       description: Build context path relative to the source workspace root
       default: "."
   workspaces:
@@ -24,19 +28,14 @@ spec:
     - name: dockerconfig
       description: Workspace with a config.json for the registry (mounted from harbor-credentials secret)
       mountPath: /kaniko/.docker
-  results:
-    - name: image-url
-      description: The full image URL with SHA tag that was pushed
   steps:
     - name: build-and-push
       image: gcr.io/kaniko-project/executor:latest
-      script: |
-        #!/busybox/sh
-        set -e
-        /kaniko/executor \
-          --dockerfile=$(workspaces.source.path)/$(params.dockerfile) \
-          --context=$(workspaces.source.path)/$(params.context) \
-          --destination=$(params.image):$(params.tag) \
-          --insecure \
-          --skip-tls-verify
-        printf '%s:%s' "$(params.image)" "$(params.tag)" | tee $(results.image-url.path)
+      command:
+        - /kaniko/executor
+      args:
+        - --dockerfile=$(workspaces.source.path)/$(params.dockerfile)
+        - --context=$(workspaces.source.path)/$(params.context)
+        - --destination=$(params.image):$(params.tag)
+        - --insecure
+        - --skip-tls-verify

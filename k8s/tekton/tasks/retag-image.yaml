@@ -10,41 +10,29 @@ spec:
     vulnerability-free image.
   params:
     - name: image
+      type: string
       description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
     - name: source-tag
+      type: string
       description: Existing tag to promote (commit SHA)
     - name: target-tag
+      type: string
       description: Tag to add
       default: latest
+  workspaces:
+    - name: dockerconfig
+      description: Docker config.json for Harbor authentication
+      mountPath: /workspace/dockerconfig
   steps:
     - name: retag
       image: gcr.io/go-containerregistry/crane:latest
       env:
-        - name: HARBOR_USER
-          valueFrom:
-            secretKeyRef:
-              name: harbor-credentials
-              key: username
-              optional: true
-        - name: HARBOR_PASS
-          valueFrom:
-            secretKeyRef:
-              name: harbor-credentials
-              key: password
-              optional: true
-      script: |
-        #!/busybox/sh
-        set -e
-        SOURCE="$(params.image):$(params.source-tag)"
-        TARGET="$(params.image):$(params.target-tag)"
-
-        if [ -n "${HARBOR_USER}" ]; then
-          crane auth login \
-            "$(echo '$(params.image)' | cut -d/ -f1)" \
-            -u "${HARBOR_USER}" -p "${HARBOR_PASS}" \
-            --insecure
-        fi
-
-        echo "Retagging ${SOURCE} → ${TARGET}"
-        crane tag "${SOURCE}" "$(params.target-tag)" --insecure
-        echo "Done."
+        - name: DOCKER_CONFIG
+          value: /workspace/dockerconfig
+      command:
+        - /ko-app/crane
+      args:
+        - tag
+        - $(params.image):$(params.source-tag)
+        - $(params.target-tag)
+        - --insecure

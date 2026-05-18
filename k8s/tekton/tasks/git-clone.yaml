@@ -6,8 +6,10 @@ metadata:
 spec:
   params:
     - name: url
+      type: string
       description: Git repository URL (internal Gitea address preferred)
     - name: revision
+      type: string
       description: Git commit SHA or branch to check out
       default: main
   workspaces:

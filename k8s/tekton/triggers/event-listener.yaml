@@ -4,12 +4,15 @@ metadata:
   name: gitea-listener
   namespace: ci
 spec:
+  namespaceSelector: {}
+  resources: {}
   serviceAccountName: tekton-triggers-sa
   triggers:
     - name: gitea-push-main
       interceptors:
         # Only trigger on pushes to main or master branches
         - ref:
+            kind: ClusterInterceptor
             name: cel
           params:
             - name: filter
@@ -22,6 +25,7 @@ spec:
                 - key: truncated_sha
                   expression: "body.after.truncate(8)"
       bindings:
-        - ref: gitea-push-binding
+        - kind: TriggerBinding
+          ref: gitea-push-binding
       template:
         ref: build-scan-push-template

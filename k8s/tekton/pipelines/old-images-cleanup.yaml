@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: harbor-cleanup
+  name: old-images-cleanup
   namespace: ci
 spec:
   description: >
@@ -10,4 +10,5 @@ spec:
   tasks:
     - name: cleanup
       taskRef:
-        name: harbor-cleanup
+        kind: Task
+        name: old-images-cleanup

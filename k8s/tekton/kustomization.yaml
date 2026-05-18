@@ -10,9 +10,9 @@ resources:
   - tasks/kaniko-build-push.yaml
   - tasks/trivy-scan.yaml
   - tasks/retag-image.yaml
-  - tasks/harbor-cleanup.yaml
+  - tasks/old-images-cleanup.yaml
   - pipelines/build-scan-push.yaml
-  - pipelines/harbor-cleanup.yaml
+  - pipelines/old-images-cleanup.yaml
   - triggers/rbac.yaml
   - triggers/trigger-binding.yaml
   - triggers/trigger-template.yaml

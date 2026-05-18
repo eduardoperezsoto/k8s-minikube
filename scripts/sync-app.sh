@@ -1,9 +1,13 @@
 #!/bin/bash
 # Pushes app/ to the Gitea app repo.
-# Requires: port-forward active (kubectl port-forward -n gitea svc/gitea-http 3000:3000)
 set -e
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../app" && pwd)"
+
+kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
+PF_PID=$!
+sleep 3
+trap "kill $PF_PID 2>/dev/null; wait $PF_PID 2>/dev/null || true" EXIT
 
 APP_TMP=$(mktemp -d)
 cp -r "${APP_DIR}/." "${APP_TMP}/"

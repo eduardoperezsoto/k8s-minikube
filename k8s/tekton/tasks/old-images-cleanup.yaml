@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: harbor-cleanup
+  name: old-images-cleanup
   namespace: ci
 spec:
   description: >
@@ -10,7 +10,8 @@ spec:
   steps:
     - name: cleanup
       image: python:3.11-slim
-      command: [python3, /scripts/cleanup_images.py]
+      command: [/bin/sh, -c]
+      args: ["pip install --quiet requests && python3 /scripts/cleanup_images.py"]
       env:
         - name: ARGOCD_URL
           valueFrom:

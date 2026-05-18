@@ -132,6 +132,9 @@ kubectl wait --for=condition=available --timeout=5m \
 kubectl apply -f https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
 kubectl wait --for=condition=available --timeout=3m \
   -n tekton-pipelines deployment/tekton-dashboard
+kubectl -n tekton-pipelines get deployment tekton-dashboard -o json \
+  | sed 's/--read-only=true/--read-only=false/' \
+  | kubectl apply -f -
 
 echo "==> 12. Registrando ArgoCD Applications..."
 kubectl apply -f /workspaces/minikube/k8s/argocd/apps/
@@ -142,18 +145,22 @@ HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
 minikube ssh -- "echo '${HARBOR_IP} harbor.harbor.svc.cluster.local' | sudo tee -a /etc/hosts"
 
 echo "==> 14. Configurando webhook en Gitea..."
-# Wait for the EventListener Service to be ready before registering the webhook
 kubectl wait --for=condition=available --timeout=2m \
   -n ci deployment/el-gitea-listener 2>/dev/null || true
 
-# Register the webhook via Gitea API for every repository in the admin account
+kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
+PF_PID=$!
+sleep 3
+
+GITEA_AUTH="Authorization: Basic $(echo -n 'admin:admin123' | base64)"
+
 for REPO in $(curl -s \
-  -H "Authorization: Basic $(echo -n 'admin:admin123' | base64)" \
-  "http://gitea-http.gitea.svc.cluster.local:3000/api/v1/repos/search?limit=50" \
+  -H "${GITEA_AUTH}" \
+  "http://localhost:3000/api/v1/repos/search?limit=50" \
   | jq -r '.data[].name' 2>/dev/null); do
   curl -s -o /dev/null -w "  Webhook → ${REPO}: %{http_code}\n" \
     -X POST \
-    -H "Authorization: Basic $(echo -n 'admin:admin123' | base64)" \
+    -H "${GITEA_AUTH}" \
     -H "Content-Type: application/json" \
     -d '{
       "type": "gitea",
@@ -164,8 +171,11 @@ for REPO in $(curl -s \
         "content_type": "json"
       }
     }' \
-    "http://gitea-http.gitea.svc.cluster.local:3000/api/v1/repos/admin/${REPO}/hooks"
+    "http://localhost:3000/api/v1/repos/admin/${REPO}/hooks"
 done
+
+kill $PF_PID
+wait $PF_PID 2>/dev/null || true
 
 ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
 

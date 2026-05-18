@@ -17,7 +17,7 @@ spec:
         - name: harbor-pull-secret
       containers:
         - name: app
-          image: harbor.harbor.svc.cluster.local:80/ednel/app:cd9a8780948739349bea5d341235551613b4c66b
+          image: harbor.harbor.svc.cluster.local:80/ednel/app:41ed156b9a305ebfba8859b43c0eaec50ed850ec
           ports:
             - containerPort: 80
           resources:

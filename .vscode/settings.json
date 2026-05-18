@@ -1,6 +1,6 @@
 {
   "yaml.schemas": {
-    "https://json.schemastore.org/kubernetes.json": [
+    "kubernetes": [
       "k8s/**/*.yaml",
       "git-repos/**/*.yaml"
     ]

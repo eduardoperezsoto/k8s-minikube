@@ -19,3 +19,18 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+  ignoreDifferences:
+    - group: tekton.dev
+      kind: Pipeline
+      jsonPointers:
+        - /status
+    - group: tekton.dev
+      kind: Task
+      jsonPointers:
+        - /status
+      jqPathExpressions:
+        - .spec.steps[].computeResources
+    - group: triggers.tekton.dev
+      kind: EventListener
+      jsonPointers:
+        - /status

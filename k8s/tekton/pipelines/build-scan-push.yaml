@@ -10,12 +10,16 @@ spec:
     picks up a vulnerable image automatically.
   params:
     - name: repo-url
+      type: string
       description: Internal Gitea clone URL (http://gitea-http.gitea.svc.cluster.local:3000/...)
     - name: revision
+      type: string
       description: Git commit SHA
     - name: image-name
+      type: string
       description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
     - name: harbor-project
+      type: string
       description: Harbor project name
       default: ednel
 
@@ -29,6 +33,7 @@ spec:
     # ── 1. Clone ─────────────────────────────────────────────
     - name: git-clone
       taskRef:
+        kind: Task
         name: git-clone
       params:
         - name: url
@@ -42,6 +47,7 @@ spec:
     # ── 2. Build & push with SHA tag ─────────────────────────
     - name: build-push
       taskRef:
+        kind: Task
         name: kaniko-build-push
       runAfter: [git-clone]
       params:
@@ -58,15 +64,20 @@ spec:
     # ── 3. Trivy vulnerability scan ───────────────────────────
     - name: trivy-scan
       taskRef:
+        kind: Task
         name: trivy-scan
       runAfter: [build-push]
       params:
         - name: image
           value: $(params.image-name):$(params.revision)
+      workspaces:
+        - name: dockerconfig
+          workspace: dockerconfig
 
     # ── 4. Promote to :latest only after a clean scan ─────────
     - name: retag-latest
       taskRef:
+        kind: Task
         name: retag-image
       runAfter: [trivy-scan]
       params:
@@ -76,3 +87,6 @@ spec:
           value: $(params.revision)
         - name: target-tag
           value: latest
+      workspaces:
+        - name: dockerconfig
+          workspace: dockerconfig

@@ -58,10 +58,10 @@ spec:
                   apiVersion: tekton.dev/v1
                   kind: PipelineRun
                   metadata:
-                    generateName: harbor-cleanup-
+                    generateName: old-images-cleanup-
                     namespace: ci
                   spec:
                     pipelineRef:
-                      name: harbor-cleanup
+                      name: old-images-cleanup
                     serviceAccountName: tekton-pipeline-sa
                   EOF

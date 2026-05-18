@@ -1,9 +1,13 @@
 #!/bin/bash
-# Pushes k8s/ to the Gitea infra repo so ArgoCD picks up the changes.
-# Requires: port-forward active (kubectl port-forward -n gitea svc/gitea-http 3000:3000)
+# Pushes k8s/ to the Gitea infra repo (ArgoCD source of truth for all cluster config).
 set -e
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
+PF_PID=$!
+sleep 3
+trap "kill $PF_PID 2>/dev/null; wait $PF_PID 2>/dev/null || true" EXIT
 
 INFRA_TMP=$(mktemp -d)
 cp -r "${REPO_ROOT}/k8s/." "${INFRA_TMP}/"
