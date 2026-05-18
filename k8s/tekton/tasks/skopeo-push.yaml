@@ -5,9 +5,9 @@ metadata:
   namespace: ci
 spec:
   description: >
-    Pushes the local image tarball to Harbor with the SHA tag and tags it as
-    :latest in a single step. Runs only after Trivy scan passes, so the
-    registry never receives a vulnerable image.
+    Pushes the local image tarball to Harbor tagging it with both the commit
+    SHA and :latest in a single operation. Runs only after Trivy scan passes,
+    so the registry never receives a vulnerable image.
   params:
     - name: image
       type: string
@@ -27,15 +27,9 @@ spec:
       script: |
         #!/bin/sh
         set -e
-        skopeo copy \
-          oci-archive:$(workspaces.source.path)/image.tar \
+        skopeo --authfile=$(workspaces.dockerconfig.path)/config.json copy \
+          docker-archive:$(workspaces.source.path)/image.tar \
           docker://$(params.image):$(params.tag) \
-          --dest-tls-verify=false \
-          --dest-authfile=$(workspaces.dockerconfig.path)/config.json
-
-        skopeo copy \
-          docker://$(params.image):$(params.tag) \
-          docker://$(params.image):latest \
+          --additional-tag $(params.image):latest \
           --src-tls-verify=false \
-          --dest-tls-verify=false \
-          --dest-authfile=$(workspaces.dockerconfig.path)/config.json
+          --dest-tls-verify=false

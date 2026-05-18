@@ -20,4 +20,4 @@ git -C "${APP_TMP}" remote add origin http://admin:admin123@localhost:3000/admin
 git -C "${APP_TMP}" push origin HEAD:main --force
 rm -rf "${APP_TMP}"
 
-echo "==> Pushed. Tekton will trigger automatically on push to main."
+echo "==> Pushed."

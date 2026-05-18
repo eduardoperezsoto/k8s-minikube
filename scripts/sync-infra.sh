@@ -20,4 +20,4 @@ git -C "${INFRA_TMP}" remote add gitea http://admin:admin123@localhost:3000/admi
 git -C "${INFRA_TMP}" push gitea HEAD:main --force
 rm -rf "${INFRA_TMP}"
 
-echo "==> Pushed. ArgoCD will sync tekton-ci and app automatically."
+echo "==> Pushed."

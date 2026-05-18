@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(kubectl get *)",
-      "Bash(kubectl run *)"
+      "Bash(kubectl run *)",
+      "Bash(kubectl describe *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(kubectl logs *)"
     ]
   }
 }
