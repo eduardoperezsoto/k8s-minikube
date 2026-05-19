@@ -17,6 +17,13 @@ spec:
   steps:
     - name: scan
       image: aquasec/trivy:0.70.0
+      computeResources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
       script: |
         #!/bin/sh
         set -e

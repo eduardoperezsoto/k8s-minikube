@@ -12,6 +12,13 @@ spec:
     - name: cleanup
       image: harbor.harbor.svc.cluster.local:80/ednel/harbor-cleanup:latest
       command: ["python3", "/scripts/cleanup_images.py"]
+      computeResources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
       env:
         - name: ARGOCD_URL
           valueFrom:

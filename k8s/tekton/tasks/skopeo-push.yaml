@@ -24,13 +24,27 @@ spec:
   steps:
     - name: push-and-tag
       image: quay.io/skopeo/stable:v1.22.2
+      computeResources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
       script: |
         #!/bin/sh
         set -e
+        # Immutable tag (commit SHA)
         skopeo copy \
           --authfile=$(workspaces.dockerconfig.path)/config.json \
           --src-tls-verify=false \
           --dest-tls-verify=false \
-          --additional-tag $(params.image):latest \
           docker-archive:$(workspaces.source.path)/image.tar \
           docker://$(params.image):$(params.tag)
+        # Mutable tag (latest) — reuses blobs from previous push by digest
+        skopeo copy \
+          --authfile=$(workspaces.dockerconfig.path)/config.json \
+          --src-tls-verify=false \
+          --dest-tls-verify=false \
+          docker://$(params.image):$(params.tag) \
+          docker://$(params.image):latest

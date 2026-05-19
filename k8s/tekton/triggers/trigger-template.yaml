@@ -15,6 +15,10 @@ spec:
         generateName: build-scan-push-
         namespace: ci
       spec:
+        timeouts:
+          pipeline: "1h"
+          tasks: "45m"
+          finally: "10m"
         pipelineRef:
           name: build-scan-push
         serviceAccountName: tekton-pipeline-sa

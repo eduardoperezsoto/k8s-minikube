@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pipelinerun-pruner-sa
+  namespace: ci
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pipelinerun-pruner-role
+  namespace: ci
+rules:
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pipelinerun-pruner-binding
+  namespace: ci
+subjects:
+  - kind: ServiceAccount
+    name: pipelinerun-pruner-sa
+    namespace: ci
+roleRef:
+  kind: Role
+  name: pipelinerun-pruner-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pipelinerun-pruner
+  namespace: ci
+spec:
+  schedule: "0 3 * * *"
+  timeZone: "Europe/Madrid"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          serviceAccountName: pipelinerun-pruner-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: prune
+              image: alpine/k8s:1.36.1
+              imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  CUTOFF=$(date -u -d '7 days ago' +%s)
+                  echo "Pruning PipelineRuns completed before $(date -u -d @${CUTOFF} -Iseconds)"
+                  kubectl get pipelineruns -n ci \
+                    -o jsonpath='{range .items[?(@.status.completionTime)]}{.metadata.name}{"\t"}{.status.completionTime}{"\n"}{end}' \
+                    | while IFS=$'\t' read -r NAME COMPLETED; do
+                        TS=$(date -u -d "${COMPLETED}" +%s 2>/dev/null || echo 0)
+                        if [ "${TS}" -lt "${CUTOFF}" ] && [ "${TS}" -gt 0 ]; then
+                          echo "Deleting ${NAME} (completed ${COMPLETED})"
+                          kubectl delete pipelinerun -n ci "${NAME}" --wait=false
+                        fi
+                      done
+                  echo "Done."

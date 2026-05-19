@@ -1,3 +1,5 @@
 
 - En Skopeo push, hay que deshabilitar los flags para que no se verifique TLS
 - En trigger-template hay que sustituir image-name y repo-url
+- El token plano usado para verificar que hablamos con gitea podria quitarse si implementamos network
+  policy pero necesitamos saber si va a haber un cni

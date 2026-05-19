@@ -17,7 +17,9 @@ resources:
   - triggers/trigger-template.yaml
   - triggers/event-listener.yaml
   - triggers/ingress.yaml
+  - triggers/networkpolicy.yaml
   - cleanup/cronjob.yaml
+  - cleanup/pipelinerun-pruner.yaml
 
 configMapGenerator:
   - name: cleanup-script
