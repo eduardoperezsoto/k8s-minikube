@@ -1,0 +1,3 @@
+
+- En Skopeo push, hay que deshabilitar los flags para que no se verifique TLS
+- En trigger-template hay que sustituir image-name y repo-url

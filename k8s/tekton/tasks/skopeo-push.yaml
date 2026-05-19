@@ -17,9 +17,9 @@ spec:
       description: Image tag (commit SHA)
   workspaces:
     - name: source
-      description: Workspace containing image.tar produced by kaniko-build
+      description: Workspace containing image.tar
     - name: dockerconfig
-      description: Docker config.json for Harbor authentication
+      description: Docker registry authentication for Harbor
       mountPath: /workspace/dockerconfig
   steps:
     - name: push-and-tag
@@ -27,9 +27,10 @@ spec:
       script: |
         #!/bin/sh
         set -e
-        skopeo --authfile=$(workspaces.dockerconfig.path)/config.json copy \
-          docker-archive:$(workspaces.source.path)/image.tar \
-          docker://$(params.image):$(params.tag) \
-          --additional-tag $(params.image):latest \
+        skopeo copy \
+          --authfile=$(workspaces.dockerconfig.path)/config.json \
           --src-tls-verify=false \
-          --dest-tls-verify=false
+          --dest-tls-verify=false \
+          --additional-tag $(params.image):latest \
+          docker-archive:$(workspaces.source.path)/image.tar \
+          docker://$(params.image):$(params.tag)

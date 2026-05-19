@@ -22,7 +22,9 @@ spec:
     - name: source
       description: Shared workspace for the cloned source code
     - name: dockerconfig
-      description: docker config.json for Harbor (bound to harbor-credentials secret)
+      description: Docker registry authentication for Harbor
+    - name: basic-auth
+      description: Git credentials for Gitea
 
   tasks:
     # ── 1. Clone repository ──────────────────────────────────────────────
@@ -38,6 +40,8 @@ spec:
       workspaces:
         - name: output
           workspace: source
+        - name: basic-auth
+          workspace: basic-auth
 
     # ── 2. Build image to local tarball  ──────
     - name: build

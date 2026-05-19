@@ -5,43 +5,43 @@ metadata:
   namespace: ci
 spec:
   description: >
-    Queries ArgoCD for deployed images and removes old versions from Harbor,
-    keeping the currently deployed version and the previous one (rollback target).
+    Cleans up Harbor images, keeping undeployed builds newer than the deployed
+    version, the deployed version itself, and the previous one as rollback
+    target. Deletes everything older.
   steps:
     - name: cleanup
-      image: python:3.11-slim
-      command: [/bin/sh, -c]
-      args: ["pip install --quiet requests && python3 /scripts/cleanup_images.py"]
+      image: harbor.harbor.svc.cluster.local:80/ednel/harbor-cleanup:latest
+      command: ["python3", "/scripts/cleanup_images.py"]
       env:
         - name: ARGOCD_URL
           valueFrom:
             secretKeyRef:
-              name: cleanup-credentials
+              name: argocd-credentials
               key: argocd-url
         - name: ARGOCD_USER
           valueFrom:
             secretKeyRef:
-              name: cleanup-credentials
+              name: argocd-credentials
               key: argocd-user
         - name: ARGOCD_PASS
           valueFrom:
             secretKeyRef:
-              name: cleanup-credentials
+              name: argocd-credentials
               key: argocd-pass
         - name: HARBOR_URL
           valueFrom:
             secretKeyRef:
-              name: cleanup-credentials
+              name: harbor-credentials
               key: harbor-url
         - name: HARBOR_USER
           valueFrom:
             secretKeyRef:
-              name: cleanup-credentials
+              name: harbor-credentials
               key: harbor-user
         - name: HARBOR_PASS
           valueFrom:
             secretKeyRef:
-              name: cleanup-credentials
+              name: harbor-credentials
               key: harbor-pass
       volumeMounts:
         - name: script

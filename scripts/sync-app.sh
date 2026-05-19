@@ -16,7 +16,7 @@ git -C "${APP_TMP}" config user.email "setup@local"
 git -C "${APP_TMP}" config user.name "Setup"
 git -C "${APP_TMP}" add -A
 git -C "${APP_TMP}" commit -m "app snapshot"
-git -C "${APP_TMP}" remote add origin http://admin:admin123@localhost:3000/admin/app.git
+git -C "${APP_TMP}" remote add origin http://admin:admin123@localhost:3000/ednel/app.git
 git -C "${APP_TMP}" push origin HEAD:main --force
 rm -rf "${APP_TMP}"
 

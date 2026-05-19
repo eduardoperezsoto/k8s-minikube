@@ -1,9 +1,3 @@
-# Extracts parameters from the Gitea push webhook payload.
-# Gitea push event schema: https://gitea.io/api/swagger#/issue/issueCreateIssue
-# Relevant fields used here:
-#   body.after              — commit SHA after the push
-#   body.repository.name    — repository name (used to build the image name)
-#   body.repository.owner.login — repository owner
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
@@ -12,12 +6,10 @@ metadata:
 spec:
   params:
     - name: revision
-      value: $(body.after)
+      value: $(body.after)  # commit SHA
     - name: repo-name
       value: $(body.repository.name)
     - name: repo-owner
       value: $(body.repository.owner.login)
     - name: ref
       value: $(body.ref)
-    - name: harbor-project
-      value: $(extensions.harbor_project)

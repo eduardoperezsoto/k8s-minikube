@@ -8,26 +8,16 @@ spec:
   resources: {}
   serviceAccountName: tekton-triggers-sa
   triggers:
-    # ── Project: ednel (owner: admin) ────────────────────────────
-    # To add a new project, copy this trigger block, change the
-    # owner.login filter and the harbor_project expression value.
-    - name: ednel-push
+    - name: build-scan-push
       interceptors:
         - ref:
             kind: ClusterInterceptor
             name: cel
           params:
             - name: filter
-              value: >
-                (body.ref == 'refs/heads/main' ||
-                 body.ref == 'refs/heads/master') &&
-                body.repository.owner.login == 'admin'
-            - name: overlays
-              value:
-                - key: truncated_sha
-                  expression: "body.after.truncate(8)"
-                - key: harbor_project
-                  expression: "'ednel'"
+              value: >-
+                header.canonical('Authorization').compareSecret('secret', 'gitea-webhook-secret') &&
+                (body.ref == 'refs/heads/main' || body.ref == 'refs/heads/master')
       bindings:
         - kind: TriggerBinding
           ref: gitea-push-binding

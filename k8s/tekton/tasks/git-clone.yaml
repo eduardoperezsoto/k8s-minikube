@@ -18,13 +18,19 @@ spec:
   workspaces:
     - name: output
       description: Workspace where the source is cloned
+    - name: basic-auth
+      description: Git credentials for Gitea
+      mountPath: /workspace/basic-auth
   steps:
     - name: clone
-      image: alpine/git:2.49.1
+      image: alpine/git:2.52.0
       script: |
         #!/bin/sh
         set -e
-        git clone "$(params.url)" "$(workspaces.output.path)"
+        cp "$(workspaces.basic-auth.path)/.gitconfig"      "$HOME/.gitconfig"
+        cp "$(workspaces.basic-auth.path)/.git-credentials" "$HOME/.git-credentials"
+        chmod 400 "$HOME/.gitconfig" "$HOME/.git-credentials"
+        git clone --depth 1 "$(params.url)" "$(workspaces.output.path)"
         cd "$(workspaces.output.path)"
         git checkout "$(params.revision)"
         echo "Cloned $(params.url) @ $(params.revision)"

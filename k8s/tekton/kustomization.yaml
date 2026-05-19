@@ -5,7 +5,6 @@ resources:
   - namespace.yaml
   - rbac.yaml
   - dashboard-ingress.yaml
-  - secrets/harbor-credentials.yaml
   - tasks/git-clone.yaml
   - tasks/kaniko-build.yaml
   - tasks/trivy-scan.yaml
