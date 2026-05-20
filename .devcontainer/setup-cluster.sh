@@ -188,6 +188,25 @@ kubectl create secret generic gitea-pac-token \
   --from-literal=token="${PAC_TOKEN}" \
   -n ci --dry-run=client -o yaml | kubectl apply -f -
 
+# Token consumed by the Tekton git resolver to fetch Pipelines/Tasks from the
+# infra repo via Gitea's SCM API. Read-only is enough.
+curl -s -H "${GITEA_AUTH}" \
+  "http://localhost:3000/api/v1/users/admin/tokens" \
+  | jq -r '.[] | select(.name=="tekton-resolver") | .id' 2>/dev/null \
+  | while read -r TOKEN_ID; do
+      curl -s -o /dev/null -X DELETE -H "${GITEA_AUTH}" \
+        "http://localhost:3000/api/v1/users/admin/tokens/${TOKEN_ID}"
+    done
+
+RESOLVER_TOKEN=$(curl -s -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
+  -d '{"name":"tekton-resolver","scopes":["read:repository"]}' \
+  "http://localhost:3000/api/v1/users/admin/tokens" \
+  | jq -r '.sha1')
+
+kubectl create secret generic gitea-resolver-token \
+  --from-literal=token="${RESOLVER_TOKEN}" \
+  -n tekton-pipelines-resolvers --dry-run=client -o yaml | kubectl apply -f -
+
 kubectl create secret generic gitea-pac-webhook \
   --from-literal=webhook-secret="${WEBHOOK_SECRET}" \
   -n ci --dry-run=client -o yaml | kubectl apply -f -

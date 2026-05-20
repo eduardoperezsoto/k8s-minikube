@@ -62,7 +62,12 @@ spec:
                     namespace: ci
                   spec:
                     pipelineRef:
-                      name: cleanup-images
+                      resolver: git
+                      params:
+                        - name: repo
+                          value: infra
+                        - name: pathInRepo
+                          value: tekton/pipelines/cleanup-images.yaml
                     taskRunTemplate:
                       serviceAccountName: tekton-pipeline-sa
                   EOF

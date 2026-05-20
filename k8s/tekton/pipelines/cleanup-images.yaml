@@ -11,5 +11,9 @@ spec:
   tasks:
     - name: cleanup
       taskRef:
-        kind: Task
-        name: cleanup-images
+        resolver: git
+        params:
+          - name: repo
+            value: infra
+          - name: pathInRepo
+            value: tekton/tasks/cleanup-images.yaml

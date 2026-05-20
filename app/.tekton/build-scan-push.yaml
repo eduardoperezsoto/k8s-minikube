@@ -5,26 +5,24 @@ metadata:
   annotations:
     pipelinesascode.tekton.dev/on-event: "[push]"
     pipelinesascode.tekton.dev/on-target-branch: "[main, master]"
-    pipelinesascode.tekton.dev/max-keep-runs: "5"
+    pipelinesascode.tekton.dev/max-keep-runs: "30"
 spec:
   pipelineRef:
-    resolver: cluster
+    resolver: git
     params:
-      - name: kind
-        value: pipeline
-      - name: name
-        value: build-scan-push
-      - name: namespace
-        value: ci
+      - name: repo
+        value: infra
+      - name: pathInRepo
+        value: tekton/pipelines/build-scan-push.yaml
+      - name: org
+        value: "{{ repo_owner }}"
   params:
-    # {{ repo_url }} resolves to Gitea's ROOT_URL (the external nip.io host), which
-    # is not reachable from inside the cluster. Compose the in-cluster URL instead.
-    - name: repo-url
-      value: "http://gitea-http.gitea.svc.cluster.local:3000/ednel/{{ repo_name }}.git"
+    - name: repo-owner
+      value: "{{ repo_owner }}"
+    - name: repo-name
+      value: "{{ repo_name }}"
     - name: revision
       value: "{{ revision }}"
-    - name: image-name
-      value: "harbor.harbor.svc.cluster.local:80/ednel/{{ repo_name }}"
   workspaces:
     - name: source
       volumeClaimTemplate:

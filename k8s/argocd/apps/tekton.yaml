@@ -20,16 +20,6 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
   ignoreDifferences:
-    - group: tekton.dev
-      kind: Pipeline
-      jsonPointers:
-        - /status
-    - group: tekton.dev
-      kind: Task
-      jsonPointers:
-        - /status
-      jqPathExpressions:
-        - .spec.steps[].computeResources
     - group: pipelinesascode.tekton.dev
       kind: Repository
       jsonPointers:

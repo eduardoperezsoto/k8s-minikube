@@ -1,0 +1,19 @@
+# Configures the Tekton git resolver to fetch Pipelines/Tasks from the in-cluster
+# Gitea infra repo via SCM API.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-resolver-config
+  namespace: tekton-pipelines-resolvers
+  labels:
+    app.kubernetes.io/component: resolvers
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  fetch-timeout: "1m"
+  default-revision: "main"
+  scm-type: "gitea"
+  server-url: "http://gitea-http.gitea.svc.cluster.local:3000"
+  api-token-secret-name: "gitea-resolver-token"
+  api-token-secret-key: "token"
+  api-token-secret-namespace: "tekton-pipelines-resolvers"

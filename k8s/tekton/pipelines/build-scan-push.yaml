@@ -7,17 +7,25 @@ spec:
   description: >
     Builds the Docker image, scans it with Trivy, and pushes to Harbor only if
     no CRITICAL or HIGH vulnerabilities are found. Generic across projects:
-    referenced from each app repo's .tekton/push.yaml via cluster resolver.
+    referenced from each app repo's .tekton/push.yaml via git resolver.
   params:
-    - name: repo-url
+    - name: repo-owner
       type: string
-      description: Git repository URL
+      description: Git org/owner that holds the source repo
+    - name: repo-name
+      type: string
+      description: Source repo name (also used as Harbor image name)
     - name: revision
       type: string
       description: Git commit SHA to build
-    - name: image-name
+    - name: gitea-base
       type: string
-      description: "Full image ref without tag, e.g. harbor.../ednel/app"
+      description: In-cluster base URL of Gitea (override per cluster)
+      default: "http://gitea-http.gitea.svc.cluster.local:3000"
+    - name: harbor-base
+      type: string
+      description: In-cluster base URL of Harbor registry (override per cluster)
+      default: "harbor.harbor.svc.cluster.local:80"
     - name: dockerfile
       type: string
       description: Path to Dockerfile relative to the source workspace root
@@ -35,17 +43,15 @@ spec:
   tasks:
     - name: git-clone
       taskRef:
-        resolver: cluster
+        resolver: git
         params:
-          - name: kind
-            value: task
-          - name: name
-            value: git-clone
-          - name: namespace
-            value: ci
+          - name: repo
+            value: infra
+          - name: pathInRepo
+            value: tekton/tasks/git-clone.yaml
       params:
         - name: url
-          value: $(params.repo-url)
+          value: "$(params.gitea-base)/$(params.repo-owner)/$(params.repo-name).git"
         - name: revision
           value: $(params.revision)
       workspaces:
@@ -56,18 +62,16 @@ spec:
 
     - name: kaniko-build
       taskRef:
-        resolver: cluster
+        resolver: git
         params:
-          - name: kind
-            value: task
-          - name: name
-            value: kaniko-build
-          - name: namespace
-            value: ci
+          - name: repo
+            value: infra
+          - name: pathInRepo
+            value: tekton/tasks/kaniko-build.yaml
       runAfter: [git-clone]
       params:
         - name: image
-          value: $(params.image-name)
+          value: "$(params.harbor-base)/$(params.repo-owner)/$(params.repo-name)"
         - name: tag
           value: $(params.revision)
         - name: dockerfile
@@ -80,36 +84,32 @@ spec:
 
     - name: trivy-scan
       taskRef:
-        resolver: cluster
+        resolver: git
         params:
-          - name: kind
-            value: task
-          - name: name
-            value: trivy-scan
-          - name: namespace
-            value: ci
-      runAfter: [build]
+          - name: repo
+            value: infra
+          - name: pathInRepo
+            value: tekton/tasks/trivy-scan.yaml
+      runAfter: [kaniko-build]
       params:
         - name: image
-          value: $(params.image-name):$(params.revision)
+          value: "$(params.harbor-base)/$(params.repo-owner)/$(params.repo-name):$(params.revision)"
       workspaces:
         - name: source
           workspace: source
 
     - name: skopeo-push
       taskRef:
-        resolver: cluster
+        resolver: git
         params:
-          - name: kind
-            value: task
-          - name: name
-            value: skopeo-push
-          - name: namespace
-            value: ci
+          - name: repo
+            value: infra
+          - name: pathInRepo
+            value: tekton/tasks/skopeo-push.yaml
       runAfter: [trivy-scan]
       params:
         - name: image
-          value: $(params.image-name)
+          value: "$(params.harbor-base)/$(params.repo-owner)/$(params.repo-name)"
         - name: tag
           value: $(params.revision)
       workspaces:
