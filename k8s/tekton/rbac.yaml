@@ -1,12 +1,17 @@
 # ServiceAccount used by PipelineRuns and the cleanup CronJob.
-# harbor-credentials is listed here so the credential initializer sidecar
-# injects it automatically into every Task container.
+# - secrets: harbor-credentials is picked up by Tekton's credential initializer
+#   (via the tekton.dev/docker-0 annotation on the Secret) and injected into
+#   Task containers so skopeo/kaniko can auth against Harbor.
+# - imagePullSecrets: kubelet uses the same Secret (type dockerconfigjson) to
+#   pull container images from Harbor's private project, e.g. harbor-cleanup.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: tekton-pipeline-sa
   namespace: ci
 secrets:
+  - name: harbor-credentials
+imagePullSecrets:
   - name: harbor-credentials
 
 ---

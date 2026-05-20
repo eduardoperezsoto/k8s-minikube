@@ -5,33 +5,44 @@ metadata:
   namespace: ci
 spec:
   description: >
-    Builds the Docker image, scans it with Trivy, and promotes it to latest
-    only if no CRITICAL or HIGH vulnerabilities are found.
+    Builds the Docker image, scans it with Trivy, and pushes to Harbor only if
+    no CRITICAL or HIGH vulnerabilities are found. Generic across projects:
+    referenced from each app repo's .tekton/push.yaml via cluster resolver.
   params:
     - name: repo-url
       type: string
-      description: Gitea URL
+      description: Git repository URL
     - name: revision
       type: string
-      description: Git commit SHA
+      description: Git commit SHA to build
     - name: image-name
       type: string
-      description: "Full image ref without tag, e.g. harbor.cnie.internal/project/app"
+      description: "Full image ref without tag, e.g. harbor.../ednel/app"
+    - name: dockerfile
+      type: string
+      description: Path to Dockerfile relative to the source workspace root
+      default: Dockerfile
+    - name: context
+      type: string
+      description: Build context path relative to the source workspace root
+      default: "."
 
   workspaces:
     - name: source
-      description: Shared workspace for the cloned source code
     - name: dockerconfig
-      description: Docker registry authentication for Harbor
     - name: basic-auth
-      description: Git credentials for Gitea
 
   tasks:
-    # ── 1. Clone repository ──────────────────────────────────────────────
     - name: git-clone
       taskRef:
-        kind: Task
-        name: git-clone
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: namespace
+            value: ci
       params:
         - name: url
           value: $(params.repo-url)
@@ -43,26 +54,40 @@ spec:
         - name: basic-auth
           workspace: basic-auth
 
-    # ── 2. Build image to local tarball  ──────
     - name: build
       taskRef:
-        kind: Task
-        name: kaniko-build
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: kaniko-build
+          - name: namespace
+            value: ci
       runAfter: [git-clone]
       params:
         - name: image
           value: $(params.image-name)
         - name: tag
           value: $(params.revision)
+        - name: dockerfile
+          value: $(params.dockerfile)
+        - name: context
+          value: $(params.context)
       workspaces:
         - name: source
           workspace: source
 
-    # ── 3. Scan image  ────
     - name: trivy-scan
       taskRef:
-        kind: Task
-        name: trivy-scan
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: trivy-scan
+          - name: namespace
+            value: ci
       runAfter: [build]
       params:
         - name: image
@@ -71,11 +96,16 @@ spec:
         - name: source
           workspace: source
 
-    # ── 4. Push image to Harbor ─
     - name: skopeo-push
       taskRef:
-        kind: Task
-        name: skopeo-push
+        resolver: cluster
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: skopeo-push
+          - name: namespace
+            value: ci
       runAfter: [trivy-scan]
       params:
         - name: image

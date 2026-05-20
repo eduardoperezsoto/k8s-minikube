@@ -12,12 +12,9 @@ resources:
   - tasks/cleanup-images.yaml
   - pipelines/build-scan-push.yaml
   - pipelines/cleanup-images.yaml
-  - triggers/rbac.yaml
-  - triggers/trigger-binding.yaml
-  - triggers/trigger-template.yaml
-  - triggers/event-listener.yaml
-  - triggers/ingress.yaml
-  - triggers/networkpolicy.yaml
+  - pac/repository.yaml
+  - pac/ingress.yaml
+  - pac/networkpolicy.yaml
   - cleanup/cronjob.yaml
   - cleanup/pipelinerun-pruner.yaml
 

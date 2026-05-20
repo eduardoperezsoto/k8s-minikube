@@ -58,5 +58,6 @@ cleanup:
 	spec:
 	  pipelineRef:
 	    name: cleanup-images
-	  serviceAccountName: tekton-pipeline-sa
+	  taskRunTemplate:
+	    serviceAccountName: tekton-pipeline-sa
 	EOF

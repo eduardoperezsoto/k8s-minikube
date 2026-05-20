@@ -1,0 +1,19 @@
+apiVersion: pipelinesascode.tekton.dev/v1alpha1
+kind: Repository
+metadata:
+  name: app
+  namespace: ci
+spec:
+  # Must match repository.html_url as it appears in the Gitea webhook payload,
+  # i.e. Gitea's ROOT_URL (http://gitea.127.0.0.1.nip.io:8080).
+  url: http://gitea.127.0.0.1.nip.io:8080/ednel/app
+  git_provider:
+    type: gitea
+    # In-cluster URL used by the PaC controller to call the Gitea API.
+    url: http://gitea-http.gitea.svc.cluster.local:3000
+    secret:
+      name: gitea-pac-token
+      key: token
+    webhook_secret:
+      name: gitea-pac-webhook
+      key: webhook-secret

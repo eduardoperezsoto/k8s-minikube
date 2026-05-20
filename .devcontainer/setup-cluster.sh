@@ -112,24 +112,31 @@ rm -rf "${APP_TMP}"
 kill $PF_PID
 wait $PF_PID 2>/dev/null || true
 
-echo "==> 8. Instalando Tekton Pipelines, Triggers y Dashboard..."
+echo "==> 8. Instalando Tekton Pipelines y Dashboard..."
 kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 kubectl wait --for=condition=available --timeout=5m \
   -n tekton-pipelines deployment/tekton-pipelines-controller
 kubectl wait --for=condition=available --timeout=5m \
   -n tekton-pipelines deployment/tekton-pipelines-webhook
-kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
-kubectl apply -f https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
-kubectl wait --for=condition=available --timeout=5m \
-  -n tekton-pipelines deployment/tekton-triggers-controller
-kubectl wait --for=condition=available --timeout=5m \
-  -n tekton-pipelines deployment/tekton-triggers-webhook
 kubectl apply -f https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
 kubectl wait --for=condition=available --timeout=3m \
   -n tekton-pipelines deployment/tekton-dashboard
 kubectl -n tekton-pipelines get deployment tekton-dashboard -o json \
   | sed 's/--read-only=true/--read-only=false/' \
   | kubectl apply -f -
+
+echo "==> 8b. Instalando Pipelines as Code..."
+kubectl apply -f https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/stable/release.k8s.yaml
+kubectl wait --for=condition=available --timeout=5m \
+  -n pipelines-as-code deployment/pipelines-as-code-controller
+kubectl wait --for=condition=available --timeout=5m \
+  -n pipelines-as-code deployment/pipelines-as-code-webhook
+
+# Point the commit-status "Details" link to the Tekton Dashboard ingress.
+kubectl patch cm pipelines-as-code -n pipelines-as-code --type merge \
+  -p '{"data":{"tekton-dashboard-url":"http://tekton.127.0.0.1.nip.io:8080"}}'
+kubectl rollout restart -n pipelines-as-code deployment/pipelines-as-code-controller
+kubectl rollout status -n pipelines-as-code deployment/pipelines-as-code-controller --timeout=60s
 
 echo "==> 9. Registrando ArgoCD Applications..."
 kubectl apply -f /workspaces/minikube/k8s/argocd/apps/
@@ -148,22 +155,39 @@ docker push harbor.harbor.svc.cluster.local:80/ednel/harbor-cleanup:latest
 eval $(minikube docker-env --unset)
 
 
-echo "==> 11. Configurando webhook en Gitea..."
+echo "==> 11. Configurando Pipelines as Code + webhook en Gitea..."
 kubectl create namespace ci 2>/dev/null || true
 
-kubectl wait --for=condition=available --timeout=2m \
-  -n ci deployment/el-gitea-listener 2>/dev/null || true
-
 WEBHOOK_SECRET=$(openssl rand -hex 32)
-kubectl create secret generic gitea-webhook-secret \
-  --from-literal=secret="${WEBHOOK_SECRET}" \
-  -n ci --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
 PF_PID=$!
 sleep 3
 
 GITEA_AUTH="Authorization: Basic $(echo -n 'admin:admin123' | base64)"
+
+# Rotate the Gitea PAT used by PaC to call back into Gitea (commit status, etc.).
+# Gitea rejects duplicate token names, so delete any previous one first.
+curl -s -H "${GITEA_AUTH}" \
+  "http://localhost:3000/api/v1/users/admin/tokens" \
+  | jq -r '.[] | select(.name=="pac") | .id' 2>/dev/null \
+  | while read -r TOKEN_ID; do
+      curl -s -o /dev/null -X DELETE -H "${GITEA_AUTH}" \
+        "http://localhost:3000/api/v1/users/admin/tokens/${TOKEN_ID}"
+    done
+
+PAC_TOKEN=$(curl -s -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
+  -d '{"name":"pac","scopes":["write:repository","read:user","read:organization"]}' \
+  "http://localhost:3000/api/v1/users/admin/tokens" \
+  | jq -r '.sha1')
+
+kubectl create secret generic gitea-pac-token \
+  --from-literal=token="${PAC_TOKEN}" \
+  -n ci --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create secret generic gitea-pac-webhook \
+  --from-literal=webhook-secret="${WEBHOOK_SECRET}" \
+  -n ci --dry-run=client -o yaml | kubectl apply -f -
 
 # Delete existing hooks on app to avoid duplicates on re-run
 for HOOK_ID in $(curl -s -H "${GITEA_AUTH}" \
@@ -173,12 +197,15 @@ for HOOK_ID in $(curl -s -H "${GITEA_AUTH}" \
     -X DELETE -H "${GITEA_AUTH}" \
     "http://localhost:3000/api/v1/repos/ednel/app/hooks/${HOOK_ID}"
 done
+
+# Register webhook → in-cluster PaC controller. Gitea signs the payload with
+# the shared secret; PaC verifies it using the gitea-pac-webhook Secret.
 curl -s -o /dev/null -w "  Webhook → app: %{http_code}\n" \
   -X POST \
   -H "${GITEA_AUTH}" \
   -H "Content-Type: application/json" \
-  -d "$(jq -n --arg token "${WEBHOOK_SECRET}" \
-    '{type:"gitea",active:true,events:["push"],authorization_header:$token,config:{url:"http://el-gitea-listener.ci.svc.cluster.local:8080",content_type:"json"}}')" \
+  -d "$(jq -n --arg secret "${WEBHOOK_SECRET}" \
+    '{type:"gitea",active:true,events:["push","pull_request"],config:{url:"http://pipelines-as-code-controller.pipelines-as-code.svc.cluster.local:8080",content_type:"json",secret:$secret}}')" \
   "http://localhost:3000/api/v1/repos/ednel/app/hooks"
 
 kill $PF_PID
@@ -198,16 +225,35 @@ kubectl create secret generic argocd-credentials \
   --from-literal=argocd-pass="${ARGOCD_PASS}" \
   -n ci --dry-run=client -o yaml | kubectl apply -f -
 
+# Single Secret serving three consumers:
+#   - kubelet image pull: type=dockerconfigjson + key .dockerconfigjson
+#   - Skopeo task (workspaces.dockerconfig): key config.json
+#   - cleanup task (env vars): keys harbor-url, harbor-user, harbor-pass
+# The Tekton credential initializer is wired by the tekton.dev/docker-0 annotation.
 HARBOR_AUTH=$(printf 'admin:Harbor12345' | base64 -w0)
 HARBOR_CONFIG="{\"auths\":{\"harbor.harbor.svc.cluster.local:80\":{\"auth\":\"${HARBOR_AUTH}\"}}}"
 kubectl create secret generic harbor-credentials \
+  --from-literal=.dockerconfigjson="${HARBOR_CONFIG}" \
   --from-literal=config.json="${HARBOR_CONFIG}" \
   --from-literal=harbor-url=http://harbor.harbor.svc.cluster.local:80 \
   --from-literal=harbor-user=admin \
   --from-literal=harbor-pass=Harbor12345 \
   -n ci --dry-run=client -o yaml \
+| sed '/^kind: Secret$/a type: kubernetes.io/dockerconfigjson' \
 | kubectl annotate --local -f - tekton.dev/docker-0=harbor.harbor.svc.cluster.local:80 -o yaml \
 | kubectl apply -f -
+
+echo "==> 13. Disparando el primer build (re-push del repo app)..."
+# The initial push in step 7 happened before the webhook existed, so PaC
+# never saw it. Wait for ArgoCD to reconcile the Repository CR and re-push
+# the app repo so PaC fires the pipeline once.
+kubectl wait --for=condition=established --timeout=60s \
+  crd/repositories.pipelinesascode.tekton.dev 2>/dev/null || true
+for i in $(seq 1 12); do
+  kubectl get repository app -n ci >/dev/null 2>&1 && break
+  sleep 5
+done
+bash /workspaces/minikube/scripts/sync-app.sh
 
 echo ""
 echo "============================================"

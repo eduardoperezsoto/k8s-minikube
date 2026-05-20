@@ -30,20 +30,23 @@ Access via browser:
 4. Configure Gitea
   a. Log in to Gitea at http://gitea.127.0.0.1.nip.io:8080
   b. Create a repository for each application.
-  c. The Tekton webhook is registered automatically by setup-cluster.sh.
-     Any push to main/master triggers the build-scan-push pipeline.
+  c. The Pipelines as Code webhook is registered automatically by setup-cluster.sh.
+     Any push to main triggers the PipelineRun defined in .tekton/push.yaml of the
+     app repo.
 
 5. ArgoCD (configured automatically by setup-cluster.sh)
   - Watches: http://gitea-http.gitea.svc.cluster.local:3000/admin/infra.git  path: k8s/app
   - Syncs the app Deployment and Service to namespace: default
   - To deploy a new image version, update k8s/app/deployment.yaml and push infra repo to Gitea.
 
-6. Tekton CI (configured automatically by setup-cluster.sh)
-  - Pipelines and Tasks are defined in k8s/tekton/
-  - To update CI resources: scripts/sync-pipelines.sh
-  - To trigger manually: see scripts/sync-pipelines.sh header for kubectl example
+6. Tekton CI with Pipelines as Code (configured automatically by setup-cluster.sh)
+  - Tasks live cluster-side in k8s/tekton/tasks/ (namespace: ci)
+  - Per-app PipelineRun lives in <app-repo>/.tekton/push.yaml
+  - Repository CR (k8s/tekton/pac/repository.yaml) maps the Gitea repo URL to namespace ci
+  - To update Tasks: push to infra repo; ArgoCD syncs to namespace ci
+  - To change CI logic for an app: edit .tekton/push.yaml in that app's repo
 
 7. Cleanup CronJob
   - Runs daily at 02:00 UTC, keeps current + previous Harbor image per repo
-  - Script: scripts/cleanup_images.py
-  - Credentials: k8s/tekton/cleanup/secret.yaml (update argocd-pass before applying)
+  - Script: k8s/tekton/cleanup/cleanup_images.py
+  - Tekton pipeline: k8s/tekton/pipelines/cleanup-images.yaml (not PaC-driven; triggered by CronJob)

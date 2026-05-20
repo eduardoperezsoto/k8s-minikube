@@ -30,7 +30,8 @@ spec:
         - /status
       jqPathExpressions:
         - .spec.steps[].computeResources
-    - group: triggers.tekton.dev
-      kind: EventListener
+    - group: pipelinesascode.tekton.dev
+      kind: Repository
       jsonPointers:
         - /status
+        - /pipelinerun_status

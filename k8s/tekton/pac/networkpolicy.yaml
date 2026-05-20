@@ -1,0 +1,25 @@
+# Restricts ingress to the Pipelines as Code controller pod: only Gitea pods
+# (in-cluster webhook deliveries) and APISIX (host-debug via ingress) may reach it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pipelines-as-code-controller-allow-webhook
+  namespace: pipelines-as-code
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: pipelines-as-code
+      app.kubernetes.io/component: controller
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gitea
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: apisix
+      ports:
+        - protocol: TCP
+          port: 8080
