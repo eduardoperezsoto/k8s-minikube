@@ -2,7 +2,7 @@
   "yaml.schemas": {
     "kubernetes": [
       "k8s/**/*.yaml",
-      "git-repos/**/*.yaml"
+      "app/**/*.yaml"
     ]
   }
 }

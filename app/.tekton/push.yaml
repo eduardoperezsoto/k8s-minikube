@@ -3,18 +3,10 @@ kind: PipelineRun
 metadata:
   name: build-scan-push
   annotations:
-    # Triggered by Pipelines as Code on every push to main.
-    # The Pipeline definition (with all Tasks) lives cluster-side in namespace ci
-    # and is resolved via the cluster resolver. Bumps to the Pipeline are PRs
-    # to the infra repo; app repos do not need changes.
     pipelinesascode.tekton.dev/on-event: "[push]"
-    pipelinesascode.tekton.dev/on-target-branch: "[main]"
+    pipelinesascode.tekton.dev/on-target-branch: "[main, master]"
     pipelinesascode.tekton.dev/max-keep-runs: "5"
 spec:
-  timeouts:
-    pipeline: "1h"
-    tasks: "45m"
-    finally: "10m"
   pipelineRef:
     resolver: cluster
     params:

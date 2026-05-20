@@ -54,7 +54,7 @@ spec:
         - name: basic-auth
           workspace: basic-auth
 
-    - name: build
+    - name: kaniko-build
       taskRef:
         resolver: cluster
         params:

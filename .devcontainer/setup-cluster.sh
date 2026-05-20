@@ -228,11 +228,6 @@ kubectl create secret generic argocd-credentials \
   --from-literal=argocd-pass="${ARGOCD_PASS}" \
   -n ci --dry-run=client -o yaml | kubectl apply -f -
 
-# Single Secret serving three consumers:
-#   - kubelet image pull: type=dockerconfigjson + key .dockerconfigjson
-#   - Skopeo task (workspaces.dockerconfig): key config.json
-#   - cleanup task (env vars): keys harbor-url, harbor-user, harbor-pass
-# The Tekton credential initializer is wired by the tekton.dev/docker-0 annotation.
 HARBOR_AUTH=$(printf 'admin:Harbor12345' | base64 -w0)
 HARBOR_CONFIG="{\"auths\":{\"harbor.harbor.svc.cluster.local:80\":{\"auth\":\"${HARBOR_AUTH}\"}}}"
 kubectl create secret generic harbor-credentials \
@@ -247,9 +242,6 @@ kubectl create secret generic harbor-credentials \
 | kubectl apply -f -
 
 echo "==> 13. Disparando el primer build (re-push del repo app)..."
-# The initial push in step 7 happened before the webhook existed, so PaC
-# never saw it. Wait for ArgoCD to reconcile the Repository CR and re-push
-# the app repo so PaC fires the pipeline once.
 kubectl wait --for=condition=established --timeout=60s \
   crd/repositories.pipelinesascode.tekton.dev 2>/dev/null || true
 for i in $(seq 1 12); do

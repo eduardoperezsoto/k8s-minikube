@@ -16,7 +16,7 @@ spec:
       description: Workspace containing image.tar
   steps:
     - name: scan
-      image: aquasec/trivy:0.70.0
+      image: aquasec/trivy:latest
       computeResources:
         requests:
           cpu: 250m

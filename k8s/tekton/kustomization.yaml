@@ -13,7 +13,6 @@ resources:
   - pipelines/build-scan-push.yaml
   - pipelines/cleanup-images.yaml
   - pac/repository.yaml
-  - pac/ingress.yaml
   - pac/networkpolicy.yaml
   - cleanup/cronjob.yaml
   - cleanup/pipelinerun-pruner.yaml
