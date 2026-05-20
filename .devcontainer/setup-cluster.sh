@@ -124,6 +124,9 @@ kubectl wait --for=condition=available --timeout=3m \
 kubectl -n tekton-pipelines get deployment tekton-dashboard -o json \
   | sed 's/--read-only=true/--read-only=false/' \
   | kubectl apply -f -
+# The Dashboard release ships a ClusterRoleBinding for the (now removed)
+# Tekton Triggers aggregate ClusterRole. Drop it to keep RBAC clean.
+kubectl delete clusterrolebinding tekton-dashboard-triggers-view --ignore-not-found
 
 echo "==> 8b. Instalando Pipelines as Code..."
 kubectl apply -f https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/stable/release.k8s.yaml

@@ -1,4 +1,9 @@
-# ServiceAccount used by PipelineRuns and the cleanup CronJob.
+# ServiceAccount used to run every PipelineRun in this namespace:
+#   - build-scan-push (created by Pipelines as Code on push events)
+#   - cleanup-images  (created by the cleanup-scheduler CronJob)
+# (The CronJob itself runs as cleanup-scheduler; this SA is the one assigned to
+# the PipelineRun it spawns.)
+#
 # - secrets: harbor-credentials is picked up by Tekton's credential initializer
 #   (via the tekton.dev/docker-0 annotation on the Secret) and injected into
 #   Task containers so skopeo/kaniko can auth against Harbor.
@@ -14,38 +19,36 @@ secrets:
 imagePullSecrets:
   - name: harbor-credentials
 
+# NOTE: tekton-pipeline-sa intentionally has no Role/RoleBinding in this
+# namespace. The Tasks (git-clone, kaniko, trivy, skopeo, cleanup) do not call
+# the K8s API — the Tekton controller (which uses its own SA in
+# tekton-pipelines) creates and manages all the TaskRuns/Pods on its behalf.
+# If a future Task needs kubectl access (deploys, ArgoCD CLI, etc.) define a
+# scoped Role for that Task only, not a blanket one for the whole SA.
+
 ---
-# Allow the SA to create/read TaskRuns and PipelineRuns in the ci namespace
+# Dedicated Role for the Tekton Dashboard inside the ci namespace.
+# The dashboard already has cluster-wide read on Tekton CRDs and pod logs
+# (via ClusterRole tekton-aggregate-view installed by the Dashboard release).
+# Here we only grant the write/lifecycle verbs it needs to:
+#   - create PipelineRuns (manual cleanup runs from the UI)
+#   - cancel a running PipelineRun/TaskRun (patch)
+#   - delete completed PipelineRuns (cleanup from UI)
+# No permissions on Pipeline/Task definitions: those are GitOps-managed.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: tekton-pipeline-role
+  name: tekton-dashboard-role
   namespace: ci
 rules:
   - apiGroups: ["tekton.dev"]
-    resources: ["pipelineruns", "taskruns", "pipelines", "tasks"]
-    verbs: ["create", "get", "list", "watch", "update", "patch"]
-  - apiGroups: [""]
-    resources: ["secrets", "configmaps", "serviceaccounts"]
-    verbs: ["get", "list"]
+    resources: ["pipelineruns"]
+    verbs: ["create", "patch", "delete"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["taskruns"]
+    verbs: ["patch", "delete"]
 
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: tekton-pipeline-rolebinding
-  namespace: ci
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: tekton-pipeline-role
-subjects:
-  - kind: ServiceAccount
-    name: tekton-pipeline-sa
-    namespace: ci
-
----
-# Allow the Tekton Dashboard to create/manage PipelineRuns in the ci namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -54,7 +57,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: tekton-pipeline-role
+  name: tekton-dashboard-role
 subjects:
   - kind: ServiceAccount
     name: tekton-dashboard
