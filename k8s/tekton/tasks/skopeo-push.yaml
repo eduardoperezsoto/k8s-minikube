@@ -5,21 +5,20 @@ metadata:
   namespace: ci
 spec:
   description: >
-    Pushes the local image tarball to Harbor tagging it with both the commit
-    SHA and :latest in a single operation. Runs only after Trivy scan passes,
-    so the registry never receives a vulnerable image.
+    Pushes the local image tarball to a container registry tagging it with both
+    the provided tag and :latest.
   params:
     - name: image
       type: string
       description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
     - name: tag
       type: string
-      description: Image tag (commit SHA)
+      description: Image tag
   workspaces:
     - name: source
       description: Workspace containing image.tar
     - name: dockerconfig
-      description: Docker registry authentication for Harbor
+      description: Docker registry authentication (config.json)
       mountPath: /workspace/dockerconfig
   steps:
     - name: push-and-tag
@@ -34,14 +33,14 @@ spec:
       script: |
         #!/bin/sh
         set -e
-        # Immutable tag (commit SHA)
+        # Primary tag
         skopeo copy \
           --authfile=$(workspaces.dockerconfig.path)/config.json \
-          --src-tls-verify=false \
+          --src-tls-verify=false \ 
           --dest-tls-verify=false \
           docker-archive:$(workspaces.source.path)/image.tar \
           docker://$(params.image):$(params.tag)
-        # Mutable tag (latest) — reuses blobs from previous push by digest
+        # Mutable tag (latest)
         skopeo copy \
           --authfile=$(workspaces.dockerconfig.path)/config.json \
           --src-tls-verify=false \

@@ -1,5 +1,4 @@
-# Restricts ingress to the Pipelines as Code controller pod: only Gitea pods
-# (in-cluster webhook deliveries) may reach it.
+# Restricts ingress to the Pipelines as Code controller pod: only Gitea pods may reach it.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

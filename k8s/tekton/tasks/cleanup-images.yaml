@@ -10,7 +10,7 @@ spec:
     target. Deletes everything older.
   steps:
     - name: cleanup
-      image: harbor.harbor.svc.cluster.local:80/ednel/harbor-cleanup:latest
+      image: harbor.harbor.svc.cluster.local:80/ednel/harbor-cleanup:latest #TBR
       command: ["python3", "/scripts/cleanup_images.py"]
       computeResources:
         requests:

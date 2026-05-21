@@ -1,6 +1,2 @@
 
 - En Skopeo push, hay que deshabilitar los flags para que no se verifique TLS
-- Los placeholders del PipelineRun ({{ repo_url }}, {{ revision }}, {{ repo_name }})
-  los resuelve Pipelines as Code en tiempo de evento; no hace falta tocarlos
-- El webhook secret de PaC va en gitea-pac-webhook (Secret en ns ci);
-  el token de Gitea para callbacks va en gitea-pac-token (Secret en ns ci)

@@ -1,14 +1,7 @@
-# ServiceAccount used to run every PipelineRun in this namespace:
-#   - build-scan-push (created by Pipelines as Code on push events)
-#   - cleanup-images  (created by the cleanup-scheduler CronJob)
-# (The CronJob itself runs as cleanup-scheduler; this SA is the one assigned to
-# the PipelineRun it spawns.)
-#
-# - secrets: harbor-credentials is picked up by Tekton's credential initializer
-#   (via the tekton.dev/docker-0 annotation on the Secret) and injected into
-#   Task containers so skopeo/kaniko can auth against Harbor.
-# - imagePullSecrets: kubelet uses the same Secret (type dockerconfigjson) to
-#   pull container images from Harbor's private project, e.g. harbor-cleanup.
+# harbor-credentials plays two roles thanks to its dockerconfigjson type:
+# Tekton's credential initializer mounts it (via the tekton.dev/docker-0
+# annotation on the Secret) so Tasks can auth against Harbor; kubelet uses it
+# as imagePullSecret to pull Task images from Harbor's private project.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -19,22 +12,14 @@ secrets:
 imagePullSecrets:
   - name: harbor-credentials
 
-# NOTE: tekton-pipeline-sa intentionally has no Role/RoleBinding in this
-# namespace. The Tasks (git-clone, kaniko, trivy, skopeo, cleanup) do not call
-# the K8s API — the Tekton controller (which uses its own SA in
-# tekton-pipelines) creates and manages all the TaskRuns/Pods on its behalf.
-# If a future Task needs kubectl access (deploys, ArgoCD CLI, etc.) define a
-# scoped Role for that Task only, not a blanket one for the whole SA.
+# tekton-pipeline-sa intentionally has no Role/RoleBinding: Tasks don't call
+# the K8s API. If a future Task needs it, define a scoped Role for that Task.
 
 ---
-# Dedicated Role for the Tekton Dashboard inside the ci namespace.
-# The dashboard already has cluster-wide read on Tekton CRDs and pod logs
-# (via ClusterRole tekton-aggregate-view installed by the Dashboard release).
-# Here we only grant the write/lifecycle verbs it needs to:
-#   - create PipelineRuns (manual cleanup runs from the UI)
-#   - cancel a running PipelineRun/TaskRun (patch)
-#   - delete completed PipelineRuns (cleanup from UI)
-# No permissions on Pipeline/Task definitions: those are GitOps-managed.
+# Tekton Dashboard already has cluster-wide read on Tekton CRDs and pod logs
+# via tekton-aggregate-view. This Role only adds the write verbs needed from
+# the UI (create/cancel/delete PipelineRuns). Pipeline/Task definitions remain
+# GitOps-managed.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

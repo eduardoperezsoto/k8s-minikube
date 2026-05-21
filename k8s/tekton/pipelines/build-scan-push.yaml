@@ -43,12 +43,12 @@ spec:
   tasks:
     - name: git-clone
       taskRef:
-        resolver: git
+        resolver: hub
         params:
-          - name: repo
-            value: infra #TBR
-          - name: pathInRepo
-            value: tekton/tasks/git-clone.yaml #TBR
+          - name: name
+            value: git-clone
+          - name: version
+            value: "0.10"
       params:
         - name: url
           value: "$(params.gitea-base)/$(params.repo-owner)/$(params.repo-name).git"
