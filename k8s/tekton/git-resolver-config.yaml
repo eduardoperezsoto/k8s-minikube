@@ -1,5 +1,4 @@
-# Configures the Tekton git resolver to fetch Pipelines/Tasks from the in-cluster
-# Gitea infra repo via SCM API.
+# Configures the Tekton git resolver to fetch Pipelines/Tasks from Gitea repo via SCM API.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,6 +11,7 @@ metadata:
 data:
   fetch-timeout: "1m"
   default-revision: "main"
+  default-org: "ednel"
   scm-type: "gitea"
   server-url: "http://gitea-http.gitea.svc.cluster.local:3000"
   api-token-secret-name: "gitea-resolver-token"
