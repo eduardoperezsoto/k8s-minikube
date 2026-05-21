@@ -8,7 +8,7 @@ resources:
   - git-resolver-config.yaml
   - pac/repository.yaml
   - pac/networkpolicy.yaml
-  - cleanup/cronjob.yaml
+  - cleanup/harbor-image-cleanup.yaml
   - cleanup/pipelinerun-pruner.yaml
 
 configMapGenerator:

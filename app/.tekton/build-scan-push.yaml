@@ -11,9 +11,9 @@ spec:
     resolver: git
     params:
       - name: repo
-        value: infra
+        value: infra #TBR
       - name: pathInRepo
-        value: tekton/pipelines/build-scan-push.yaml
+        value: tekton/pipelines/build-scan-push.yaml #TBR
       - name: org
         value: "{{ repo_owner }}"
   params:
@@ -28,10 +28,10 @@ spec:
       volumeClaimTemplate:
         spec:
           accessModes: [ReadWriteOnce]
-          storageClassName: standard
+          storageClassName: standard #TBR
           resources:
             requests:
-              storage: 1Gi
+              storage: 1Gi #TBR
     - name: dockerconfig
       secret:
         secretName: harbor-credentials

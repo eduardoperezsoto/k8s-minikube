@@ -1,8 +1,9 @@
 {
   "yaml.schemas": {
     "kubernetes": [
-      "k8s/**/*.yaml",
-      "app/**/*.yaml"
+      "**/*.yaml"
     ]
-  }
+  },
+  "yaml.schemaStore.enable": false,
+  "redhat.telemetry.enabled": false
 }

@@ -34,7 +34,7 @@ spec:
       script: |
         #!/bin/sh
         set -e
-        cp "$(workspaces.basic-auth.path)/.gitconfig"      "$HOME/.gitconfig"
+        cp "$(workspaces.basic-auth.path)/.gitconfig" "$HOME/.gitconfig"
         cp "$(workspaces.basic-auth.path)/.git-credentials" "$HOME/.git-credentials"
         chmod 400 "$HOME/.gitconfig" "$HOME/.git-credentials"
         git clone --depth 1 "$(params.url)" "$(workspaces.output.path)"
