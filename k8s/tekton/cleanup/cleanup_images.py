@@ -41,7 +41,7 @@ def argocd_login() -> str:
     resp = requests.post(
         f"{ARGOCD_URL}/api/v1/session",
         json={"username": ARGOCD_USER, "password": ARGOCD_PASS},
-        verify=False,
+        verify=False, # TBR
         timeout=15,
     )
     resp.raise_for_status()

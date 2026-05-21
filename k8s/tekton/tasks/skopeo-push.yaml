@@ -36,7 +36,7 @@ spec:
         # Primary tag
         skopeo copy \
           --authfile=$(workspaces.dockerconfig.path)/config.json \
-          --src-tls-verify=false \ 
+          --src-tls-verify=false \
           --dest-tls-verify=false \
           docker-archive:$(workspaces.source.path)/image.tar \
           docker://$(params.image):$(params.tag)

@@ -1,7 +1,3 @@
-# harbor-credentials plays two roles thanks to its dockerconfigjson type:
-# Tekton's credential initializer mounts it (via the tekton.dev/docker-0
-# annotation on the Secret) so Tasks can auth against Harbor; kubelet uses it
-# as imagePullSecret to pull Task images from Harbor's private project.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -16,10 +12,7 @@ imagePullSecrets:
 # the K8s API. If a future Task needs it, define a scoped Role for that Task.
 
 ---
-# Tekton Dashboard already has cluster-wide read on Tekton CRDs and pod logs
-# via tekton-aggregate-view. This Role only adds the write verbs needed from
-# the UI (create/cancel/delete PipelineRuns). Pipeline/Task definitions remain
-# GitOps-managed.
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
