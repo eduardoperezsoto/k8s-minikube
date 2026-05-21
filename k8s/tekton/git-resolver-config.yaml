@@ -11,9 +11,9 @@ metadata:
 data:
   fetch-timeout: "1m"
   default-revision: "main"
-  default-org: "ednel"
+  default-org: "ednel" # TBR
   scm-type: "gitea"
-  server-url: "http://gitea-http.gitea.svc.cluster.local:3000"
+  server-url: "http://gitea-http.gitea.svc.cluster.local:3000" #TBR
   api-token-secret-name: "gitea-resolver-token"
   api-token-secret-key: "token"
   api-token-secret-namespace: "tekton-pipelines-resolvers"

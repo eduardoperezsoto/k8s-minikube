@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: ci
+spec:
+  description: >
+    Clones a Git repository and checks out the specified revision. The source is
+    written to the output workspace.
+  params:
+    - name: url
+      type: string
+      description: Git repository URL to clone
+    - name: revision
+      type: string
+      description: Git commit SHA or branch to check out
+      default: main
+  workspaces:
+    - name: output
+      description: Workspace where the source is cloned
+    - name: basic-auth
+      description: Git credentials for Gitea
+      mountPath: /workspace/basic-auth
+  steps:
+    - name: clone
+      image: alpine/git:2.52.0
+      computeResources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      script: |
+        #!/bin/sh
+        set -e
+        cp "$(workspaces.basic-auth.path)/.gitconfig" "$HOME/.gitconfig"
+        cp "$(workspaces.basic-auth.path)/.git-credentials" "$HOME/.git-credentials"
+        chmod 400 "$HOME/.gitconfig" "$HOME/.git-credentials"
+        git init "$(workspaces.output.path)"
+        cd "$(workspaces.output.path)"
+        git remote add origin "$(params.url)"
+        git fetch --depth 1 origin "$(params.revision)"
+        git checkout FETCH_HEAD
+        echo "Cloned $(params.url) @ $(params.revision)"
