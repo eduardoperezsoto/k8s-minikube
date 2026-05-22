@@ -1,0 +1,87 @@
+ingressclass: define el ingress.
+    - Dice que controlador gestiona el ingress
+        - Le dice al controller cual es el gateway
+
+gateway-proxy: define el gatway y como conectarse a el.
+
+values: Valores para el chart de Helm de APISIX
+
+ingress: define las reglass http "host X → service Y"
+
+Ingress Controller: configura el gateway y aplica las reglas de enrutamiento
+
+APISIX Gateway: recibe el trafico real
+
+
+
+Entonces el flujo real es:
+
+Fase de configuración
+
+1. Despliegas controller APISIX
+
+2. Creas IngressClass
+
+    Le dices:
+
+    Estos Ingress los procesa el controlador de APISIX
+
+    y además:
+
+    usa este GatewayProxy como configuración
+
+3. El controller lee el GatewayProxy
+
+    Y aprende:
+
+    dónde está el Admin API
+    cómo conectar con APISIX
+    qué gateway administra
+    
+Después viene el Ingress
+
+4. Usuario crea Ingress
+    spec:
+    ingressClassName: apisix
+
+5. El controller lo detecta
+
+    Porque:
+
+    el ingressClassName coincide
+    esa clase le pertenece
+
+6. El controller configura APISIX
+
+    Usando la info del GatewayProxy.
+
+    Ejemplo mental:
+
+    “Voy a llamar al APISIX Admin API
+    que está en http://apisix-admin:9180”
+
+    y le carga:
+
+    rutas
+    upstreams
+    plugins
+    
+Después el tráfico real
+
+    Aquí ya NO participa:
+
+    IngressClass
+    Controller
+    GatewayProxy CRD
+
+    Solo participa APISIX Gateway.
+
+Runtime real
+
+Cliente
+↓
+LoadBalancer
+↓
+APISIX Gateway
+↓
+Service backend
