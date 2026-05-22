@@ -1,2 +1,6 @@
 
 - En Skopeo push, hay que deshabilitar los flags para que no se verifique TLS
+
+
+Pending:
+- Ver si metemos cache en la parte de kaniko para harbor

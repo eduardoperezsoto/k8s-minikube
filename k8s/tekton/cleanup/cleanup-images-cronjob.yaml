@@ -51,23 +51,14 @@ spec:
             - name: create-pipelinerun
               image: alpine/k8s:1.36.1
               command:
-                - /bin/sh
-                - -c
-                - |
-                  kubectl create -f - <<'EOF'
-                  apiVersion: tekton.dev/v1
-                  kind: PipelineRun
-                  metadata:
-                    generateName: cleanup-images-
-                    namespace: ci
-                  spec:
-                    pipelineRef:
-                      resolver: git
-                      params:
-                        - name: repo
-                          value: infra
-                        - name: pathInRepo
-                          value: tekton/pipelines/cleanup-images.yaml
-                    taskRunTemplate:
-                      serviceAccountName: tekton-pipeline-sa
-                  EOF
+                - kubectl
+                - create
+                - -f
+                - /manifests/pipelinerun.yaml
+              volumeMounts:
+                - name: manifest
+                  mountPath: /manifests
+          volumes:
+            - name: manifest
+              configMap:
+                name: cleanup-pipelinerun-manifest

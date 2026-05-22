@@ -8,13 +8,19 @@ resources:
   - git-resolver-config.yaml
   - pac/repository.yaml
   - pac/networkpolicy.yaml
-  - cleanup/harbor-image-cleanup.yaml
-  - cleanup/pipelinerun-pruner.yaml
+  - cleanup/cleanup-images-cronjob.yaml
+  - cleanup/pipelinerun-pruner-cronjob.yaml
 
 configMapGenerator:
   - name: cleanup-script
     namespace: ci
     files:
-      - cleanup_images.py=cleanup/cleanup_images.py
+      - cleanup-images.py=cleanup/cleanup-images.py
+    options:
+      disableNameSuffixHash: true
+  - name: cleanup-pipelinerun-manifest
+    namespace: ci
+    files:
+      - pipelinerun.yaml=cleanup/cleanup-images-pipelinerun.yaml
     options:
       disableNameSuffixHash: true

@@ -1,0 +1,15 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: cleanup-images-
+  namespace: ci
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+      - name: repo
+        value: infra #TBR
+      - name: pathInRepo
+        value: tekton/pipelines/cleanup-images.yaml #TBR
+  taskRunTemplate:
+    serviceAccountName: tekton-pipeline-sa
