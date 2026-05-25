@@ -25,7 +25,7 @@ Access via browser:
 
 3. Configure Harbor
   a. Log in to Harbor at http://registry.127.0.0.1.nip.io:8080
-  b. Create a new project: Projects → New Project → Name: ednel → Access level: Private
+  b. Create a new project: Projects → New Project → Name: cnie-c0-apps → Access level: Private
 
 4. Configure Gitea
   a. Log in to Gitea at http://gitea.127.0.0.1.nip.io:8080
@@ -35,18 +35,19 @@ Access via browser:
      app repo.
 
 5. ArgoCD (configured automatically by setup-cluster.sh)
-  - Watches: http://gitea-http.gitea.svc.cluster.local:3000/admin/infra.git  path: k8s/app
+  - Watches Gitea repo cnie-c0-infra/infra (synced from infra/) — path: app
   - Syncs the app Deployment and Service to namespace: default
-  - To deploy a new image version, update k8s/app/deployment.yaml and push infra repo to Gitea.
+  - To deploy a new image version, update infra/app/deployment.yaml and run `make sync-infra`.
 
 6. Tekton CI with Pipelines as Code (configured automatically by setup-cluster.sh)
-  - Tasks live cluster-side in k8s/tekton/tasks/ (namespace: ci)
+  - Pipelines/Tasks live in the Gitea repo cnie-c0-infra/tekton-pac-pipelines (synced from tekton-pac-pipelines/)
+  - The Tekton git resolver fetches them on demand via the git resolver config in infra/tekton/git-resolver-config.yaml
   - Per-app PipelineRun lives in <app-repo>/.tekton/push.yaml
-  - Repository CR (k8s/tekton/pac/repository.yaml) maps the Gitea repo URL to namespace ci
-  - To update Tasks: push to infra repo; ArgoCD syncs to namespace ci
+  - Repository CR (infra/tekton/pac/repository.yaml) maps the Gitea repo URL to namespace ci
+  - To change a Pipeline/Task: edit under tekton-pac-pipelines/ and run `make sync-pipelines`
   - To change CI logic for an app: edit .tekton/push.yaml in that app's repo
 
 7. Cleanup CronJob
   - Runs daily at 02:00 UTC, keeps current + previous Harbor image per repo
-  - Script: k8s/tekton/cleanup/cleanup_images.py
-  - Tekton pipeline: k8s/tekton/pipelines/cleanup-images.yaml (not PaC-driven; triggered by CronJob)
+  - Script: infra/tekton/cleanup/cleanup-images.py
+  - Tekton pipeline: tekton-pac-pipelines/pipelines/cleanup-images.yaml (not PaC-driven; triggered by CronJob)

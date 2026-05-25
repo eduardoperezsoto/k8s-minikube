@@ -10,7 +10,7 @@ spec:
   params:
     - name: image
       type: string
-      description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/ednel/app"
+      description: "Full image ref without tag, e.g. harbor.harbor.svc.cluster.local:80/cnie-c0-apps/app"
     - name: tag
       type: string
       description: Image tag

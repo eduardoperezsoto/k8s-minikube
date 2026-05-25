@@ -14,6 +14,6 @@ spec:
         resolver: git
         params:
           - name: repo
-            value: infra
+            value: tekton-pac-pipelines
           - name: pathInRepo
-            value: tekton/tasks/cleanup-images.yaml
+            value: tasks/cleanup-images.yaml

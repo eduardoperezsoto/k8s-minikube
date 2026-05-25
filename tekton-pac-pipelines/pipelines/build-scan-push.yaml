@@ -11,7 +11,7 @@ spec:
   params:
     - name: repo-owner
       type: string
-      description: Org/owner on Gitea and project on Harbor — must match (e.g. ednel)
+      description: Org/owner on Gitea and project on Harbor — must match (e.g. cnie-c0-apps)
     - name: repo-name
       type: string
       description: Repo name on Gitea and image name on Harbor — must match (e.g. app)
@@ -46,9 +46,9 @@ spec:
         resolver: git
         params:
           - name: repo
-            value: infra #TBR
+            value: tekton-pac-pipelines
           - name: pathInRepo
-            value: tekton/tasks/git-clone.yaml #TBR
+            value: tasks/git-clone.yaml
       params:
         - name: url
           value: "$(params.gitea-base)/$(params.repo-owner)/$(params.repo-name).git"
@@ -65,9 +65,9 @@ spec:
         resolver: git
         params:
           - name: repo
-            value: infra #TBR
+            value: tekton-pac-pipelines
           - name: pathInRepo
-            value: tekton/tasks/kaniko-build.yaml #TBR
+            value: tasks/kaniko-build.yaml
       runAfter: [git-clone]
       params:
         - name: image-name
@@ -87,9 +87,9 @@ spec:
         resolver: git
         params:
           - name: repo
-            value: infra #TBR
+            value: tekton-pac-pipelines
           - name: pathInRepo
-            value: tekton/tasks/trivy-scan.yaml #TBR
+            value: tasks/trivy-scan.yaml
       runAfter: [kaniko-build]
       params:
         - name: image
@@ -103,9 +103,9 @@ spec:
         resolver: git
         params:
           - name: repo
-            value: infra #TBR
+            value: tekton-pac-pipelines
           - name: pathInRepo
-            value: tekton/tasks/skopeo-push.yaml #TBR
+            value: tasks/skopeo-push.yaml
       runAfter: [trivy-scan]
       params:
         - name: image

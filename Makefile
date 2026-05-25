@@ -1,18 +1,19 @@
-.PHONY: help setup sync-infra sync-app sync proxy status pipelines cleanup-now
+.PHONY: help setup sync-infra sync-pipelines sync-app sync proxy status pipelines cleanup-now
 
 SHELL := /bin/bash
 
 help:
 	@echo "Targets disponibles:"
-	@echo "  setup         Destruye y recrea el cluster completo"
-	@echo "  sync-infra    Push k8s/ al repo infra de Gitea"
-	@echo "  sync-app      Push app/ al repo app de Gitea"
-	@echo "  sync          Push infra y app"
-	@echo "  proxy         Expone el gateway APISIX en localhost:8080"
-	@echo "  status        Estado de pods en todos los namespaces relevantes"
-	@echo "  pipelines     Últimos 10 PipelineRuns"
-	@echo "  cleanup   Dispara el pipeline de limpieza de imágenes manualmente"
-	@echo "  argocd-pass   Muestra la contraseña de admin de ArgoCD"
+	@echo "  setup           Destruye y recrea el cluster completo"
+	@echo "  sync-infra      Push infra/ al repo infra de Gitea"
+	@echo "  sync-pipelines  Push tekton-pac-pipelines/ al repo tekton-pac-pipelines de Gitea"
+	@echo "  sync-app        Push app/ al repo app de Gitea"
+	@echo "  sync            Push infra, pipelines y app"
+	@echo "  proxy           Expone el gateway APISIX en localhost:8080"
+	@echo "  status          Estado de pods en todos los namespaces relevantes"
+	@echo "  pipelines       Últimos 10 PipelineRuns"
+	@echo "  cleanup         Dispara el pipeline de limpieza de imágenes manualmente"
+	@echo "  argocd-pass     Muestra la contraseña de admin de ArgoCD"
 
 setup:
 	bash .devcontainer/setup-cluster.sh
@@ -20,10 +21,13 @@ setup:
 sync-infra:
 	bash scripts/sync-infra.sh
 
+sync-pipelines:
+	bash scripts/sync-pipelines.sh
+
 sync-app:
 	bash scripts/sync-app.sh
 
-sync: sync-infra sync-app
+sync: sync-infra sync-pipelines sync-app
 
 proxy:
 	@echo "Accesos disponibles en http://*.127.0.0.1.nip.io:8080"

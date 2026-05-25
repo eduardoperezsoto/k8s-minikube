@@ -11,11 +11,9 @@ spec:
     resolver: git
     params:
       - name: repo
-        value: infra #TBR
+        value: tekton-pac-pipelines
       - name: pathInRepo
-        value: tekton/pipelines/build-scan-push.yaml #TBR
-      - name: org
-        value: "{{ repo_owner }}"
+        value: pipelines/build-scan-push.yaml
   params:
     - name: repo-owner
       value: "{{ repo_owner }}"

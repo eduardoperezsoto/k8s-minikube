@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: http://gitea-http.gitea.svc.cluster.local:3000/ednel/infra.git
+    repoURL: http://gitea-http.gitea.svc.cluster.local:3000/cnie-c0-infra/infra.git #TBR
     targetRevision: main
     path: app
   destination:

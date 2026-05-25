@@ -11,7 +11,7 @@ metadata:
 data:
   fetch-timeout: "1m"
   default-revision: "main"
-  default-org: "ednel" # TBR
+  default-org: "cnie-c0-infra"
   scm-type: "gitea"
   server-url: "http://gitea-http.gitea.svc.cluster.local:3000" #TBR
   api-token-secret-name: "gitea-resolver-token"

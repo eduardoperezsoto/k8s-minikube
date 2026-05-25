@@ -15,22 +15,22 @@ helm repo update
 echo "==> 3. Instalando APISIX..."
 kubectl create namespace apisix 2>/dev/null || true
 helm upgrade --install apisix apisix/apisix -n apisix \
-  -f /workspaces/minikube/k8s/apisix/values.yaml --wait --timeout 10m
-kubectl apply -f /workspaces/minikube/k8s/apisix/gateway-proxy.yaml
-kubectl apply -f /workspaces/minikube/k8s/apisix/ingressclass.yaml
+  -f /workspaces/minikube/infra/apisix/values.yaml --wait --timeout 10m
+kubectl apply -f /workspaces/minikube/infra/apisix/gateway-proxy.yaml
+kubectl apply -f /workspaces/minikube/infra/apisix/ingressclass.yaml
 
 
 echo "==> 4. Instalando Gitea..."
 kubectl create namespace gitea 2>/dev/null || true
 helm upgrade --install gitea gitea-charts/gitea -n gitea \
-  -f /workspaces/minikube/k8s/gitea/values.yaml --wait --timeout 5m
-kubectl apply -f /workspaces/minikube/k8s/gitea/ingress.yaml
+  -f /workspaces/minikube/infra/gitea/values.yaml --wait --timeout 5m
+kubectl apply -f /workspaces/minikube/infra/gitea/ingress.yaml
 
 echo "==> 5. Instalando Harbor..."
 kubectl create namespace harbor 2>/dev/null || true
 helm upgrade --install harbor harbor/harbor -n harbor \
-  -f /workspaces/minikube/k8s/harbor/values.yaml --wait --timeout 10m
-kubectl apply -f /workspaces/minikube/k8s/harbor/ingress.yaml
+  -f /workspaces/minikube/infra/harbor/values.yaml --wait --timeout 10m
+kubectl apply -f /workspaces/minikube/infra/harbor/ingress.yaml
 
 kubectl create secret docker-registry harbor-pull-secret \
   --docker-server=harbor.harbor.svc.cluster.local:80 \
@@ -39,18 +39,18 @@ kubectl create secret docker-registry harbor-pull-secret \
 
 # Crear proyecto Harbor
 kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
-  -w "  Crear proyecto Harbor 'ednel': HTTP %{http_code}\n" \
+  -w "  Crear proyecto Harbor 'cnie-c0-apps': HTTP %{http_code}\n" \
   -X POST \
   -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
   -H "Content-Type: application/json" \
-  -d '{"project_name":"ednel","public":false}' \
+  -d '{"project_name":"cnie-c0-apps","public":false}' \
   "http://localhost:8080/api/v2.0/projects" || true
 
 echo "==> 6. Instalando ArgoCD..."
 kubectl create namespace argocd 2>/dev/null || true
 helm upgrade --install argocd argo/argo-cd -n argocd \
-  -f /workspaces/minikube/k8s/argocd/values.yaml --wait --timeout 5m
-kubectl apply -f /workspaces/minikube/k8s/argocd/ingress.yaml
+  -f /workspaces/minikube/infra/argocd/values.yaml --wait --timeout 5m
+kubectl apply -f /workspaces/minikube/infra/argocd/ingress.yaml
 
 kubectl create secret generic gitea-repo-creds \
   --from-literal=type=git \
@@ -61,41 +61,64 @@ kubectl create secret generic gitea-repo-creds \
 | kubectl label --local -f - argocd.argoproj.io/secret-type=repo-creds -o yaml \
 | kubectl apply -f -
 
-echo "==> 7. Publicando repos en Gitea (infra + app)..."
+echo "==> 7. Publicando repos en Gitea (cnie-c0-infra/{infra,tekton-pac-pipelines} + cnie-c0-apps/app)..."
 kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
 PF_PID=$!
 sleep 3
 
 GITEA_AUTH="Authorization: Basic $(echo -n 'admin:admin123' | base64)"
 
-# Crear org ednel
-curl -s -o /dev/null -w "  Crear org ednel: HTTP %{http_code}\n" \
+# Crear orgs
+curl -s -o /dev/null -w "  Crear org cnie-c0-infra: HTTP %{http_code}\n" \
   -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
-  -d '{"username":"ednel","visibility":"private"}' \
+  -d '{"username":"cnie-c0-infra","visibility":"private"}' \
   "http://localhost:3000/api/v1/orgs" || true
 
-# Crear repos bajo la org ednel
+curl -s -o /dev/null -w "  Crear org cnie-c0-apps:  HTTP %{http_code}\n" \
+  -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
+  -d '{"username":"cnie-c0-apps","visibility":"private"}' \
+  "http://localhost:3000/api/v1/orgs" || true
+
+# Crear repos infra y tekton-pac-pipelines bajo cnie-c0-infra
 curl -s -o /dev/null -w "  Crear repo infra: HTTP %{http_code}\n" \
   -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
   -d '{"name":"infra","private":true,"auto_init":false}' \
-  "http://localhost:3000/api/v1/orgs/ednel/repos" || true
+  "http://localhost:3000/api/v1/orgs/cnie-c0-infra/repos" || true
 
+curl -s -o /dev/null -w "  Crear repo tekton-pac-pipelines: HTTP %{http_code}\n" \
+  -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
+  -d '{"name":"tekton-pac-pipelines","private":true,"auto_init":false}' \
+  "http://localhost:3000/api/v1/orgs/cnie-c0-infra/repos" || true
+
+# Crear repo app bajo cnie-c0-apps
 curl -s -o /dev/null -w "  Crear repo app:   HTTP %{http_code}\n" \
   -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
   -d '{"name":"app","private":true,"auto_init":false}' \
-  "http://localhost:3000/api/v1/orgs/ednel/repos" || true
+  "http://localhost:3000/api/v1/orgs/cnie-c0-apps/repos" || true
 
-# Push k8s/ → repo infra
+# Push infra/ → repo infra
 INFRA_TMP=$(mktemp -d)
-cp -r /workspaces/minikube/k8s/. "${INFRA_TMP}/"
+cp -r /workspaces/minikube/infra/. "${INFRA_TMP}/"
 git -C "${INFRA_TMP}" init
 git -C "${INFRA_TMP}" config user.email "setup@local"
 git -C "${INFRA_TMP}" config user.name "Setup"
 git -C "${INFRA_TMP}" add -A
 git -C "${INFRA_TMP}" commit -m "infra snapshot"
-git -C "${INFRA_TMP}" remote add gitea http://admin:admin123@localhost:3000/ednel/infra.git
+git -C "${INFRA_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/infra.git
 git -C "${INFRA_TMP}" push gitea HEAD:main --force
 rm -rf "${INFRA_TMP}"
+
+# Push tekton-pac-pipelines/ → repo tekton-pac-pipelines
+PIPELINES_TMP=$(mktemp -d)
+cp -r /workspaces/minikube/tekton-pac-pipelines/. "${PIPELINES_TMP}/"
+git -C "${PIPELINES_TMP}" init
+git -C "${PIPELINES_TMP}" config user.email "setup@local"
+git -C "${PIPELINES_TMP}" config user.name "Setup"
+git -C "${PIPELINES_TMP}" add -A
+git -C "${PIPELINES_TMP}" commit -m "pipelines snapshot"
+git -C "${PIPELINES_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/tekton-pac-pipelines.git
+git -C "${PIPELINES_TMP}" push gitea HEAD:main --force
+rm -rf "${PIPELINES_TMP}"
 
 # Push app/
 APP_TMP=$(mktemp -d)
@@ -105,7 +128,7 @@ git -C "${APP_TMP}" config user.email "setup@local"
 git -C "${APP_TMP}" config user.name "Setup"
 git -C "${APP_TMP}" add -A
 git -C "${APP_TMP}" commit -m "app snapshot"
-git -C "${APP_TMP}" remote add gitea http://admin:admin123@localhost:3000/ednel/app.git
+git -C "${APP_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-apps/app.git
 git -C "${APP_TMP}" push gitea HEAD:main --force
 rm -rf "${APP_TMP}"
 
@@ -142,7 +165,7 @@ kubectl rollout restart -n pipelines-as-code deployment/pipelines-as-code-contro
 kubectl rollout status -n pipelines-as-code deployment/pipelines-as-code-controller --timeout=60s
 
 echo "==> 9. Registrando ArgoCD Applications..."
-kubectl apply -f /workspaces/minikube/k8s/argocd/apps/
+kubectl apply -f /workspaces/minikube/infra/argocd/apps/
 
 # Allow Harbor containers to push: the ClusterIP is within 10.96.0.0/12
 HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
@@ -179,7 +202,7 @@ kubectl create secret generic gitea-pac-token \
   -n ci --dry-run=client -o yaml | kubectl apply -f -
 
 # Token consumed by the Tekton git resolver to fetch Pipelines/Tasks from the
-# infra repo via Gitea's SCM API. Read-only is enough.
+# tekton-pac-pipelines repo via Gitea's SCM API. Read-only is enough.
 curl -s -H "${GITEA_AUTH}" \
   "http://localhost:3000/api/v1/users/admin/tokens" \
   | jq -r '.[] | select(.name=="tekton-resolver") | .id' 2>/dev/null \
@@ -203,11 +226,11 @@ kubectl create secret generic gitea-pac-webhook \
 
 # Delete existing hooks on app to avoid duplicates on re-run
 for HOOK_ID in $(curl -s -H "${GITEA_AUTH}" \
-  "http://localhost:3000/api/v1/repos/ednel/app/hooks?limit=50" \
+  "http://localhost:3000/api/v1/repos/cnie-c0-apps/app/hooks?limit=50" \
   | jq -r '.[].id' 2>/dev/null); do
   curl -s -o /dev/null \
     -X DELETE -H "${GITEA_AUTH}" \
-    "http://localhost:3000/api/v1/repos/ednel/app/hooks/${HOOK_ID}"
+    "http://localhost:3000/api/v1/repos/cnie-c0-apps/app/hooks/${HOOK_ID}"
 done
 
 # Register webhook → in-cluster PaC controller. Gitea signs the payload with
@@ -218,7 +241,7 @@ curl -s -o /dev/null -w "  Webhook → app: %{http_code}\n" \
   -H "Content-Type: application/json" \
   -d "$(jq -n --arg secret "${WEBHOOK_SECRET}" \
     '{type:"gitea",active:true,events:["push","pull_request"],config:{url:"http://pipelines-as-code-controller.pipelines-as-code.svc.cluster.local:8080",content_type:"json",secret:$secret}}')" \
-  "http://localhost:3000/api/v1/repos/ednel/app/hooks"
+  "http://localhost:3000/api/v1/repos/cnie-c0-apps/app/hooks"
 
 kill $PF_PID
 wait $PF_PID 2>/dev/null || true

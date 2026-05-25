@@ -4,12 +4,12 @@ metadata:
   name: app
   namespace: ci
 spec:
-  url: http://gitea.127.0.0.1.nip.io:8080/ednel/app #TBR
+  url: http://gitea.127.0.0.1.nip.io:8080/cnie-c0-apps/app #TBR
   git_provider:
     type: gitea
     url: http://gitea-http.gitea.svc.cluster.local:3000 #TBR
     secret:
-      name: gitea-pac-token
+      name: gitea-pac-token 
       key: token
     webhook_secret:
       name: gitea-pac-webhook
