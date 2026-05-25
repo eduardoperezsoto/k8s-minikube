@@ -148,16 +148,6 @@ kubectl apply -f /workspaces/minikube/k8s/argocd/apps/
 HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
 minikube ssh -- "echo '${HARBOR_IP} harbor.harbor.svc.cluster.local' | sudo tee -a /etc/hosts"
 
-echo "==> 10. Construyendo imagen de cleanup en Harbor..."
-eval $(minikube docker-env)
-docker build -t harbor.harbor.svc.cluster.local:80/ednel/harbor-cleanup:latest \
-  /workspaces/minikube/k8s/tekton/cleanup/
-echo "Harbor12345" | docker login harbor.harbor.svc.cluster.local:80 \
-  -u admin --password-stdin
-docker push harbor.harbor.svc.cluster.local:80/ednel/harbor-cleanup:latest
-eval $(minikube docker-env --unset)
-
-
 echo "==> 11. Configurando Pipelines as Code + webhook en Gitea..."
 kubectl create namespace ci 2>/dev/null || true
 

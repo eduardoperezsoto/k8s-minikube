@@ -10,8 +10,12 @@ spec:
     target. Deletes everything older.
   steps:
     - name: cleanup
-      image: harbor.harbor.svc.cluster.local:80/ednel/harbor-cleanup:latest #TBR
-      command: ["python3", "/scripts/cleanup-images.py"]
+      image: python:3.11.15-slim-bookworm
+      command: ["sh", "-c"]
+      args:
+        - |
+          pip install --no-cache-dir --quiet requests==2.34.2
+          exec python3 /scripts/cleanup_images.py
       computeResources:
         requests:
           cpu: 100m
