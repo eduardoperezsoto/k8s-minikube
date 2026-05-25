@@ -15,7 +15,7 @@ spec:
       args:
         - |
           pip install --no-cache-dir --quiet requests==2.34.2
-          exec python3 /scripts/cleanup_images.py
+          exec python3 /scripts/cleanup-images.py
       computeResources:
         requests:
           cpu: 100m
