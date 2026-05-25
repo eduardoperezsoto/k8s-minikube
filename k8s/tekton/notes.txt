@@ -1,6 +1,6 @@
 
 - En Skopeo push, hay que deshabilitar los flags para que no se verifique TLS
-
+- Quitar disable_warnings() del Python cuando actives TLS — para no perder señales de cert.
 
 Pending:
 - Ver si metemos cache en la parte de kaniko para harbor

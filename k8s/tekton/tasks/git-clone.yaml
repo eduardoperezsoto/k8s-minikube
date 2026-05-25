@@ -33,13 +33,14 @@ spec:
           memory: 512Mi
       script: |
         #!/bin/sh
-        set -e
-        cp "$(workspaces.basic-auth.path)/.gitconfig" "$HOME/.gitconfig"
+        set -eu
+        echo "Cloning $(params.url) @ $(params.revision)..."
+        cp "$(workspaces.basic-auth.path)/.gitconfig"       "$HOME/.gitconfig"
         cp "$(workspaces.basic-auth.path)/.git-credentials" "$HOME/.git-credentials"
         chmod 400 "$HOME/.gitconfig" "$HOME/.git-credentials"
-        git init "$(workspaces.output.path)"
+        git init -q "$(workspaces.output.path)"
         cd "$(workspaces.output.path)"
         git remote add origin "$(params.url)"
         git fetch --depth 1 origin "$(params.revision)"
-        git checkout FETCH_HEAD
+        git checkout -q FETCH_HEAD
         echo "Cloned $(params.url) @ $(params.revision)"

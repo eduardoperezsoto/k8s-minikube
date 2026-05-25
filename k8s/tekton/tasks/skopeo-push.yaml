@@ -33,17 +33,18 @@ spec:
       script: |
         #!/bin/sh
         set -e
-        # Primary tag
+        echo "Pushing $(params.image):$(params.tag) from local tarball..."
         skopeo copy \
           --authfile=$(workspaces.dockerconfig.path)/config.json \
           --src-tls-verify=false \
           --dest-tls-verify=false \
           docker-archive:$(workspaces.source.path)/image.tar \
           docker://$(params.image):$(params.tag)
-        # Mutable tag (latest)
+        echo "Tagging $(params.image):$(params.tag) as :latest..."
         skopeo copy \
           --authfile=$(workspaces.dockerconfig.path)/config.json \
           --src-tls-verify=false \
           --dest-tls-verify=false \
           docker://$(params.image):$(params.tag) \
           docker://$(params.image):latest
+        echo "Done."
