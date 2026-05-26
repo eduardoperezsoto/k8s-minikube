@@ -21,7 +21,7 @@ Recomendación: taggear el repo (`v1.0.0`) para que los consumidores puedan pine
 | Fichero | Para qué sirve |
 |---|---|
 | [git-resolver-config.yaml](infra/tekton/git-resolver-config.yaml) | Config del git resolver: `default-org`, `server-url` de Gitea, secret del token |
-| [pac/repository.yaml](infra/tekton/pac/repository.yaml) | Registra cada repo de app ante PAC (uno por app) |
+| [tekton-pac/repositories/app.yaml](infra/tekton-pac/repositories/app.yaml) | Registra cada repo de app ante PAC (uno por app) |
 | [rbac.yaml](infra/tekton/rbac.yaml) | SA `tekton-pipeline-sa` con `imagePullSecret: harbor-credentials` + Role para que el Dashboard pueda relanzar/borrar PipelineRuns |
 | [cleanup/cleanup-images-cronjob.yaml](infra/tekton/cleanup/cleanup-images-cronjob.yaml) | CronJob diario que crea un PipelineRun de `cleanup-images` |
 | [cleanup/cleanup-images-pipelinerun.yaml](infra/tekton/cleanup/cleanup-images-pipelinerun.yaml) | Plantilla del PipelineRun que lanza el CronJob (vía ConfigMap) |
@@ -35,8 +35,8 @@ Recomendación: taggear el repo (`v1.0.0`) para que los consumidores puedan pine
 | Fichero | Línea | Qué cambiar |
 |---|---|---|
 | [git-resolver-config.yaml](infra/tekton/git-resolver-config.yaml#L16) | `server-url` | URL in-cluster real de Gitea en prod (si el Service vive en otro ns/nombre) |
-| [pac/repository.yaml](infra/tekton/pac/repository.yaml#L7) | `spec.url` | URL **externa real** del repo en Gitea prod, no `127.0.0.1.nip.io`. Es la que Gitea pone en el webhook; PAC compara contra ella |
-| [pac/repository.yaml](infra/tekton/pac/repository.yaml#L10) | `git_provider.url` | Service in-cluster de Gitea |
+| [tekton-pac/repositories/app.yaml](infra/tekton-pac/repositories/app.yaml#L7) | `spec.url` | URL **externa real** del repo en Gitea prod, no `127.0.0.1.nip.io`. Es la que Gitea pone en el webhook; PAC compara contra ella |
+| [tekton-pac/repositories/app.yaml](infra/tekton-pac/repositories/app.yaml#L10) | `git_provider.url` | Service in-cluster de Gitea |
 | [build-scan-push.yaml](tekton-pac-pipelines/pipelines/build-scan-push.yaml#L24-L28) | defaults `gitea-base` / `harbor-registry` | Solo si los Services internos cambian de nombre/puerto |
 | [app/.tekton/build-scan-push.yaml](app/.tekton/build-scan-push.yaml#L29) | `storageClassName` | SC válido en prod (probablemente no `standard`) |
 
@@ -55,8 +55,8 @@ Hoy estos secretos están hechos a mano. En prod tienen que vivir en git ya sell
 | Secret | Namespace | Claves | Lo consume |
 |---|---|---|---|
 | `gitea-resolver-token` | `tekton-pipelines-resolvers` | `token` | git resolver — [git-resolver-config.yaml:17-19](infra/tekton/git-resolver-config.yaml#L17-L19) |
-| `gitea-pac-token` | `ci` | `token` | PAC — [repository.yaml:12](infra/tekton/pac/repository.yaml#L12) |
-| `gitea-pac-webhook` | `ci` | `webhook-secret` | PAC valida firma — [repository.yaml:15](infra/tekton/pac/repository.yaml#L15) |
+| `gitea-pac-token` | `ci` | `token` | PAC — [app.yaml:12](infra/tekton-pac/repositories/app.yaml#L12) |
+| `gitea-pac-webhook` | `ci` | `webhook-secret` | PAC valida firma — [app.yaml:15](infra/tekton-pac/repositories/app.yaml#L15) |
 | `gitea-credentials` | `ci` | `.gitconfig`, `.git-credentials` | workspace `basic-auth` — [git-clone.yaml:38-40](tekton-pac-pipelines/tasks/git-clone.yaml#L38-L40) |
 | `harbor-credentials` | `ci` | `.dockerconfigjson`, `harbor-url`, `harbor-user`, `harbor-pass` | push ([skopeo-push.yaml](tekton-pac-pipelines/tasks/skopeo-push.yaml#L38)), cleanup ([cleanup-images.yaml:42-56](tekton-pac-pipelines/tasks/cleanup-images.yaml#L42-L56)), e `imagePullSecret` del SA ([rbac.yaml:6-9](infra/tekton/rbac.yaml#L6-L9)) |
 | `argocd-credentials` | `ci` | `argocd-url`, `argocd-user`, `argocd-pass` | cleanup — [cleanup-images.yaml:27-41](tekton-pac-pipelines/tasks/cleanup-images.yaml#L27-L41) |
@@ -81,7 +81,7 @@ Por cada repo en `cnie-c0-apps` registrar el webhook en Gitea apuntando al contr
 ## 7. Por cada app que entre al CI
 
 1. En `cnie-c0-apps/<app>` añadir `.tekton/build-scan-push.yaml` — copia de [app/.tekton/build-scan-push.yaml](app/.tekton/build-scan-push.yaml) con el `storageClassName` ajustado.
-2. En `infra` añadir un PAC `Repository` por app (clon de [pac/repository.yaml](infra/tekton/pac/repository.yaml) con `name` y `spec.url` reales) y añadirlo al `kustomization.yaml`.
+2. En `infra` añadir un PAC `Repository` por app (clon de [tekton-pac/repositories/app.yaml](infra/tekton-pac/repositories/app.yaml) con `name` y `spec.url` reales) y añadirlo al `kustomization.yaml`.
 3. En Harbor crear el proyecto con nombre igual a la org (`cnie-c0-apps`), porque el pipeline mapea `repo-owner` → proyecto Harbor — [build-scan-push.yaml:14](tekton-pac-pipelines/pipelines/build-scan-push.yaml#L14).
 4. Registrar el webhook (sección 6).
 

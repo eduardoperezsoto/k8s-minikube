@@ -1,4 +1,4 @@
-.PHONY: help setup sync-infra sync-pipelines sync-app sync proxy status pipelines cleanup argocd-pass
+.PHONY: help setup sync-infra sync-pipelines sync-ci-utils sync-app sync proxy status pipelines cleanup argocd-pass
 
 SHELL := /bin/bash
 
@@ -7,8 +7,9 @@ help:
 	@echo "  setup           Destruye y recrea el cluster completo"
 	@echo "  sync-infra      Push infra/ al repo infra de Gitea"
 	@echo "  sync-pipelines  Push tekton-pac-pipelines/ al repo tekton-pac-pipelines de Gitea"
+	@echo "  sync-ci-utils   Push ci-utils/ al repo ci-utils de Gitea (dispara build de imagen)"
 	@echo "  sync-app        Push app/ al repo app de Gitea"
-	@echo "  sync            Push infra, pipelines y app"
+	@echo "  sync            Push infra, pipelines, ci-utils y app"
 	@echo "  proxy           Expone el gateway APISIX en localhost:8080"
 	@echo "  status          Estado de pods en todos los namespaces relevantes"
 	@echo "  pipelines       Últimos 10 PipelineRuns"
@@ -24,10 +25,13 @@ sync-infra:
 sync-pipelines:
 	bash scripts/sync-pipelines.sh
 
+sync-ci-utils:
+	bash scripts/sync-ci-utils.sh
+
 sync-app:
 	bash scripts/sync-app.sh
 
-sync: sync-infra sync-pipelines sync-app
+sync: sync-infra sync-pipelines sync-ci-utils sync-app
 
 proxy:
 	@echo "Accesos disponibles en http://*.127.0.0.1.nip.io:8080"

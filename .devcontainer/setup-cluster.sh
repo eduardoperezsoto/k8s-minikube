@@ -37,13 +37,21 @@ kubectl create secret docker-registry harbor-pull-secret \
   --docker-username=admin --docker-password=Harbor12345 \
   -n default --dry-run=client -o yaml | kubectl apply -f -
 
-# Crear proyecto Harbor
+# Crear proyectos Harbor
 kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
-  -w "  Crear proyecto Harbor 'cnie-c0-apps': HTTP %{http_code}\n" \
+  -w "  Crear proyecto Harbor 'cnie-c0-apps':  HTTP %{http_code}\n" \
   -X POST \
   -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
   -H "Content-Type: application/json" \
   -d '{"project_name":"cnie-c0-apps","public":false}' \
+  "http://localhost:8080/api/v2.0/projects" || true
+
+kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
+  -w "  Crear proyecto Harbor 'cnie-c0-infra': HTTP %{http_code}\n" \
+  -X POST \
+  -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"project_name":"cnie-c0-infra","public":false}' \
   "http://localhost:8080/api/v2.0/projects" || true
 
 echo "==> 6. Instalando ArgoCD..."
@@ -61,7 +69,7 @@ kubectl create secret generic gitea-repo-creds \
 | kubectl label --local -f - argocd.argoproj.io/secret-type=repo-creds -o yaml \
 | kubectl apply -f -
 
-echo "==> 7. Publicando repos en Gitea (cnie-c0-infra/{infra,tekton-pac-pipelines} + cnie-c0-apps/app)..."
+echo "==> 7. Publicando repos en Gitea (cnie-c0-infra/{infra,tekton-pac-pipelines,ci-utils} + cnie-c0-apps/app)..."
 kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
 PF_PID=$!
 sleep 3
@@ -88,6 +96,11 @@ curl -s -o /dev/null -w "  Crear repo infra: HTTP %{http_code}\n" \
 curl -s -o /dev/null -w "  Crear repo tekton-pac-pipelines: HTTP %{http_code}\n" \
   -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
   -d '{"name":"tekton-pac-pipelines","private":true,"auto_init":false}' \
+  "http://localhost:3000/api/v1/orgs/cnie-c0-infra/repos" || true
+
+curl -s -o /dev/null -w "  Crear repo ci-utils: HTTP %{http_code}\n" \
+  -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
+  -d '{"name":"ci-utils","private":true,"auto_init":false}' \
   "http://localhost:3000/api/v1/orgs/cnie-c0-infra/repos" || true
 
 # Crear repo app bajo cnie-c0-apps
@@ -119,6 +132,18 @@ git -C "${PIPELINES_TMP}" commit -m "pipelines snapshot"
 git -C "${PIPELINES_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/tekton-pac-pipelines.git
 git -C "${PIPELINES_TMP}" push gitea HEAD:main --force
 rm -rf "${PIPELINES_TMP}"
+
+# Push ci-utils/ → repo ci-utils
+CIUTILS_TMP=$(mktemp -d)
+cp -r /workspaces/minikube/ci-utils/. "${CIUTILS_TMP}/"
+git -C "${CIUTILS_TMP}" init
+git -C "${CIUTILS_TMP}" config user.email "setup@local"
+git -C "${CIUTILS_TMP}" config user.name "Setup"
+git -C "${CIUTILS_TMP}" add -A
+git -C "${CIUTILS_TMP}" commit -m "ci-utils snapshot"
+git -C "${CIUTILS_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/ci-utils.git
+git -C "${CIUTILS_TMP}" push gitea HEAD:main --force
+rm -rf "${CIUTILS_TMP}"
 
 # Push app/
 APP_TMP=$(mktemp -d)
@@ -224,24 +249,29 @@ kubectl create secret generic gitea-pac-webhook \
   --from-literal=webhook-secret="${WEBHOOK_SECRET}" \
   -n ci --dry-run=client -o yaml | kubectl apply -f -
 
-# Delete existing hooks on app to avoid duplicates on re-run
-for HOOK_ID in $(curl -s -H "${GITEA_AUTH}" \
-  "http://localhost:3000/api/v1/repos/cnie-c0-apps/app/hooks?limit=50" \
-  | jq -r '.[].id' 2>/dev/null); do
-  curl -s -o /dev/null \
-    -X DELETE -H "${GITEA_AUTH}" \
-    "http://localhost:3000/api/v1/repos/cnie-c0-apps/app/hooks/${HOOK_ID}"
-done
-
 # Register webhook → in-cluster PaC controller. Gitea signs the payload with
 # the shared secret; PaC verifies it using the gitea-pac-webhook Secret.
-curl -s -o /dev/null -w "  Webhook → app: %{http_code}\n" \
-  -X POST \
-  -H "${GITEA_AUTH}" \
-  -H "Content-Type: application/json" \
-  -d "$(jq -n --arg secret "${WEBHOOK_SECRET}" \
-    '{type:"gitea",active:true,events:["push","pull_request"],config:{url:"http://pipelines-as-code-controller.pipelines-as-code.svc.cluster.local:8080",content_type:"json",secret:$secret}}')" \
-  "http://localhost:3000/api/v1/repos/cnie-c0-apps/app/hooks"
+register_pac_webhook() {
+  local repo_path="$1"
+  for HOOK_ID in $(curl -s -H "${GITEA_AUTH}" \
+    "http://localhost:3000/api/v1/repos/${repo_path}/hooks?limit=50" \
+    | jq -r '.[].id' 2>/dev/null); do
+    curl -s -o /dev/null \
+      -X DELETE -H "${GITEA_AUTH}" \
+      "http://localhost:3000/api/v1/repos/${repo_path}/hooks/${HOOK_ID}"
+  done
+
+  curl -s -o /dev/null -w "  Webhook → ${repo_path}: %{http_code}\n" \
+    -X POST \
+    -H "${GITEA_AUTH}" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -n --arg secret "${WEBHOOK_SECRET}" \
+      '{type:"gitea",active:true,events:["push","pull_request"],config:{url:"http://pipelines-as-code-controller.pipelines-as-code.svc.cluster.local:8080",content_type:"json",secret:$secret}}')" \
+    "http://localhost:3000/api/v1/repos/${repo_path}/hooks"
+}
+
+register_pac_webhook "cnie-c0-apps/app"
+register_pac_webhook "cnie-c0-infra/ci-utils"
 
 kill $PF_PID
 wait $PF_PID 2>/dev/null || true
@@ -273,13 +303,17 @@ kubectl create secret generic harbor-credentials \
 | kubectl annotate --local -f - tekton.dev/docker-0=harbor.harbor.svc.cluster.local:80 -o yaml \
 | kubectl apply -f -
 
-echo "==> 13. Disparando el primer build (re-push del repo app)..."
+echo "==> 13. Disparando los primeros builds (re-push de ci-utils y app)..."
 kubectl wait --for=condition=established --timeout=60s \
   crd/repositories.pipelinesascode.tekton.dev 2>/dev/null || true
 for i in $(seq 1 12); do
-  kubectl get repository app -n ci >/dev/null 2>&1 && break
+  kubectl get repository ci-utils -n ci >/dev/null 2>&1 \
+    && kubectl get repository app -n ci >/dev/null 2>&1 \
+    && break
   sleep 5
 done
+# ci-utils primero: la Task cleanup-images depende de su imagen en Harbor.
+bash /workspaces/minikube/scripts/sync-ci-utils.sh
 bash /workspaces/minikube/scripts/sync-app.sh
 
 echo ""

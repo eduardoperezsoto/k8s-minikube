@@ -17,14 +17,13 @@ Required environment variables:
   HARBOR_PASS
 """
 
-import base64
-import json
 import os
-import ssl
 import sys
-from urllib import error as urlerror
-from urllib import request as urlrequest
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
+
+import requests
+
+requests.packages.urllib3.disable_warnings()  # TBR
 
 
 # ─── Config ───────────────────────────────────────────────────────────────────
@@ -36,46 +35,31 @@ HARBOR_URL  = os.environ["HARBOR_URL"].rstrip("/")
 HARBOR_USER = os.environ["HARBOR_USER"]
 HARBOR_PASS = os.environ["HARBOR_PASS"]
 
-HARBOR_AUTH = "Basic " + base64.b64encode(f"{HARBOR_USER}:{HARBOR_PASS}".encode()).decode()
-SSL_CTX = ssl._create_unverified_context()  # TBR
-
-
-# ─── HTTP helper ──────────────────────────────────────────────────────────────
-
-def _request(method: str, url: str, *, headers: dict | None = None,
-             body: dict | None = None, timeout: int = 30):
-    data = None
-    headers = dict(headers or {})
-    if body is not None:
-        data = json.dumps(body).encode()
-        headers.setdefault("Content-Type", "application/json")
-    req = urlrequest.Request(url, data=data, headers=headers, method=method)
-    return urlrequest.urlopen(req, context=SSL_CTX, timeout=timeout)
-
 
 # ─── ArgoCD ───────────────────────────────────────────────────────────────────
 
 def argocd_login() -> str:
-    resp = _request(
-        "POST",
+    resp = requests.post(
         f"{ARGOCD_URL}/api/v1/session",
-        body={"username": ARGOCD_USER, "password": ARGOCD_PASS},
+        json={"username": ARGOCD_USER, "password": ARGOCD_PASS},
+        verify=False,  # TBR
         timeout=15,
     )
-    return json.loads(resp.read().decode())["token"]
+    resp.raise_for_status()
+    return resp.json()["token"]
 
 
 def get_images_in_use(token: str) -> dict[str, str]:
-    resp = _request(
-        "GET",
+    resp = requests.get(
         f"{ARGOCD_URL}/api/v1/applications",
         headers={"Authorization": f"Bearer {token}"},
+        verify=False,  # TBR
         timeout=15,
     )
-    payload = json.loads(resp.read().decode())
+    resp.raise_for_status()
 
     in_use: dict[str, str] = {}
-    for app in payload.get("items") or []:
+    for app in resp.json().get("items") or []:
         app_name = app["metadata"]["name"]
         images = app.get("status", {}).get("summary", {}).get("images") or []
         for image in images:
@@ -90,24 +74,23 @@ def get_images_in_use(token: str) -> dict[str, str]:
 
 # ─── Harbor ───────────────────────────────────────────────────────────────────
 
-def _harbor(method: str, path: str, *, params: dict | None = None,
-            body: dict | None = None):
-    url = f"{HARBOR_URL}{path}"
-    if params:
-        url = f"{url}?{urlencode(params)}"
-    return _request(
-        method, url,
-        headers={"Authorization": HARBOR_AUTH},
-        body=body,
+def _harbor(method: str, path: str, **kwargs):
+    resp = requests.request(
+        method, f"{HARBOR_URL}{path}",
+        auth=(HARBOR_USER, HARBOR_PASS),
+        verify=False,  # TBR
         timeout=30,
+        **kwargs,
     )
+    resp.raise_for_status()
+    return resp
 
 
 def _harbor_all(path: str, **params) -> list:
     results, page = [], 1
     while True:
         resp = _harbor("GET", path, params={"page_size": 100, "page": page, **params})
-        batch = json.loads(resp.read().decode())
+        batch = resp.json()
         results.extend(batch)
         if len(batch) < 100:
             break
@@ -191,7 +174,7 @@ def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -
             try:
                 delete_artifact(project, repo, artifact["digest"])
                 deleted += 1
-            except urlerror.HTTPError as exc:
+            except requests.HTTPError as exc:
                 print(f"    ERROR deleting digest {artifact['digest'][:16]}...: {exc}")
 
     return deleted, kept

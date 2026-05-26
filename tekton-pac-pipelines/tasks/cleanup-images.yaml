@@ -10,8 +10,8 @@ spec:
     target. Deletes everything older.
   steps:
     - name: cleanup
-      image: python:3.11.15-slim-bookworm
-      command: ["python3", "/scripts/cleanup-images.py"]
+      image: harbor.harbor.svc.cluster.local:80/cnie-c0-infra/ci-utils:latest #TBR
+      args: ["/app/scripts/cleanup_images.py"]
       computeResources:
         requests:
           cpu: 100m
@@ -50,11 +50,3 @@ spec:
             secretKeyRef:
               name: harbor-credentials
               key: harbor-pass
-      volumeMounts:
-        - name: script
-          mountPath: /scripts
-  volumes:
-    - name: script
-      configMap:
-        name: cleanup-script
-        defaultMode: 0755

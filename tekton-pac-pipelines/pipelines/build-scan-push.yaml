@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: build-scan-push
-  namespace: ci
+  namespace: ci #TBR
 spec:
   description: >
     Builds the Docker image, scans it with Trivy, and pushes to Harbor only if

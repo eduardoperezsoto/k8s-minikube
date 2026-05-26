@@ -6,18 +6,10 @@ resources:
   - rbac.yaml
   - dashboard-ingress.yaml
   - git-resolver-config.yaml
-  - pac/repository.yaml
-  - pac/networkpolicy.yaml
   - cleanup/cleanup-images-cronjob.yaml
   - cleanup/pipelinerun-pruner-cronjob.yaml
 
 configMapGenerator:
-  - name: cleanup-script
-    namespace: ci
-    files:
-      - cleanup-images.py=cleanup/cleanup-images.py
-    options:
-      disableNameSuffixHash: true
   - name: cleanup-pipelinerun-manifest
     namespace: ci
     files:
