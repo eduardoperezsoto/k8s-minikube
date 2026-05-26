@@ -11,11 +11,7 @@ spec:
   steps:
     - name: cleanup
       image: python:3.11.15-slim-bookworm
-      command: ["sh", "-c"]
-      args:
-        - |
-          pip install --no-cache-dir --quiet requests==2.34.2
-          exec python3 /scripts/cleanup-images.py
+      command: ["python3", "/scripts/cleanup-images.py"]
       computeResources:
         requests:
           cpu: 100m

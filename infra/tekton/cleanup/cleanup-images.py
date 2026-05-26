@@ -17,12 +17,14 @@ Required environment variables:
   HARBOR_PASS
 """
 
+import base64
+import json
 import os
+import ssl
 import sys
-import requests
-from urllib.parse import quote
-
-requests.packages.urllib3.disable_warnings()
+from urllib import error as urlerror
+from urllib import request as urlrequest
+from urllib.parse import quote, urlencode
 
 
 # ─── Config ───────────────────────────────────────────────────────────────────
@@ -34,32 +36,46 @@ HARBOR_URL  = os.environ["HARBOR_URL"].rstrip("/")
 HARBOR_USER = os.environ["HARBOR_USER"]
 HARBOR_PASS = os.environ["HARBOR_PASS"]
 
+HARBOR_AUTH = "Basic " + base64.b64encode(f"{HARBOR_USER}:{HARBOR_PASS}".encode()).decode()
+SSL_CTX = ssl._create_unverified_context()  # TBR
+
+
+# ─── HTTP helper ──────────────────────────────────────────────────────────────
+
+def _request(method: str, url: str, *, headers: dict | None = None,
+             body: dict | None = None, timeout: int = 30):
+    data = None
+    headers = dict(headers or {})
+    if body is not None:
+        data = json.dumps(body).encode()
+        headers.setdefault("Content-Type", "application/json")
+    req = urlrequest.Request(url, data=data, headers=headers, method=method)
+    return urlrequest.urlopen(req, context=SSL_CTX, timeout=timeout)
+
 
 # ─── ArgoCD ───────────────────────────────────────────────────────────────────
 
 def argocd_login() -> str:
-    resp = requests.post(
+    resp = _request(
+        "POST",
         f"{ARGOCD_URL}/api/v1/session",
-        json={"username": ARGOCD_USER, "password": ARGOCD_PASS},
-        verify=False, # TBR
+        body={"username": ARGOCD_USER, "password": ARGOCD_PASS},
         timeout=15,
     )
-    resp.raise_for_status()
-    return resp.json()["token"]
+    return json.loads(resp.read().decode())["token"]
 
 
 def get_images_in_use(token: str) -> dict[str, str]:
-    headers = {"Authorization": f"Bearer {token}"}
-    resp = requests.get(
+    resp = _request(
+        "GET",
         f"{ARGOCD_URL}/api/v1/applications",
-        headers=headers,
-        verify=False,
+        headers={"Authorization": f"Bearer {token}"},
         timeout=15,
     )
-    resp.raise_for_status()
+    payload = json.loads(resp.read().decode())
 
     in_use: dict[str, str] = {}
-    for app in resp.json().get("items") or []:
+    for app in payload.get("items") or []:
         app_name = app["metadata"]["name"]
         images = app.get("status", {}).get("summary", {}).get("images") or []
         for image in images:
@@ -74,26 +90,26 @@ def get_images_in_use(token: str) -> dict[str, str]:
 
 # ─── Harbor ───────────────────────────────────────────────────────────────────
 
-def _harbor(method: str, path: str, **kwargs):
+def _harbor(method: str, path: str, *, params: dict | None = None,
+            body: dict | None = None):
     url = f"{HARBOR_URL}{path}"
-    resp = requests.request(
+    if params:
+        url = f"{url}?{urlencode(params)}"
+    return _request(
         method, url,
-        auth=(HARBOR_USER, HARBOR_PASS),
-        verify=False,
+        headers={"Authorization": HARBOR_AUTH},
+        body=body,
         timeout=30,
-        **kwargs,
     )
-    resp.raise_for_status()
-    return resp
 
 
 def _harbor_all(path: str, **params) -> list:
     results, page = [], 1
     while True:
         resp = _harbor("GET", path, params={"page_size": 100, "page": page, **params})
-        batch = resp.json()
+        batch = json.loads(resp.read().decode())
         results.extend(batch)
-        if len(results) >= int(resp.headers.get("X-Total-Count", len(results))):
+        if len(batch) < 100:
             break
         page += 1
     return results
@@ -175,7 +191,7 @@ def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -
             try:
                 delete_artifact(project, repo, artifact["digest"])
                 deleted += 1
-            except requests.HTTPError as exc:
+            except urlerror.HTTPError as exc:
                 print(f"    ERROR deleting digest {artifact['digest'][:16]}...: {exc}")
 
     return deleted, kept

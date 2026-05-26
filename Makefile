@@ -1,4 +1,4 @@
-.PHONY: help setup sync-infra sync-pipelines sync-app sync proxy status pipelines cleanup-now
+.PHONY: help setup sync-infra sync-pipelines sync-app sync proxy status pipelines cleanup argocd-pass
 
 SHELL := /bin/bash
 
@@ -53,15 +53,4 @@ argocd-pass:
 	  -o jsonpath='{.data.password}' | base64 -d && echo
 
 cleanup:
-	kubectl create -f - <<'EOF'
-	apiVersion: tekton.dev/v1
-	kind: PipelineRun
-	metadata:
-	  generateName: cleanup-images-manual-
-	  namespace: ci
-	spec:
-	  pipelineRef:
-	    name: cleanup-images
-	  taskRunTemplate:
-	    serviceAccountName: tekton-pipeline-sa
-	EOF
+	kubectl create -f infra/tekton/cleanup/cleanup-images-pipelinerun.yaml
