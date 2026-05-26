@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: build-scan-push
-  namespace: ci #TBR
 spec:
   description: >
     Builds the Docker image, scans it with Trivy, and pushes to Harbor only if
@@ -24,7 +23,7 @@ spec:
       default: "http://gitea-http.gitea.svc.cluster.local:3000" #TBR
     - name: harbor-registry
       type: string
-      description: In-cluster Harbor registry address (e.g. harbor.harbor.svc.cluster.local:80)
+      description: In-cluster Harbor registry address
       default: "harbor.harbor.svc.cluster.local:80" #TBR
     - name: dockerfile
       type: string

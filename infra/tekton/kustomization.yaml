@@ -11,7 +11,7 @@ resources:
 
 configMapGenerator:
   - name: cleanup-pipelinerun-manifest
-    namespace: ci
+    namespace: tekton-ci
     files:
       - pipelinerun.yaml=cleanup/cleanup-images-pipelinerun.yaml
     options:

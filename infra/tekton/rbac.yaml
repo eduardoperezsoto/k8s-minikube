@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: tekton-pipeline-sa
-  namespace: ci
+  namespace: tekton-ci
 secrets:
   - name: harbor-credentials
 imagePullSecrets:
@@ -17,7 +17,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: tekton-dashboard-role
-  namespace: ci
+  namespace: tekton-ci
 rules:
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns"]
@@ -31,7 +31,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: tekton-dashboard-rolebinding
-  namespace: ci
+  namespace: tekton-ci
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

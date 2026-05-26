@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: cleanup-images
-  namespace: ci #TBR
 spec:
   description: >
     Cleans up Harbor images, keeping undeployed builds newer than the deployed

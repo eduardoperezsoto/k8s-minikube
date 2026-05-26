@@ -11,7 +11,7 @@ spec:
     path: tekton-pac
   destination:
     server: https://kubernetes.default.svc
-    namespace: ci
+    namespace: tekton-ci
   syncPolicy:
     automated:
       prune: true

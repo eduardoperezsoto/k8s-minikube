@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: git-clone
-  namespace: ci
 spec:
   description: >
     Clones a Git repository and checks out the specified revision. The source is

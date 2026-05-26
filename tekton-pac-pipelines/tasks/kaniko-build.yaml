@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: kaniko-build
-  namespace: ci
 spec:
   description: >
     Builds a Docker image with Kaniko and saves it as image.tar on the source

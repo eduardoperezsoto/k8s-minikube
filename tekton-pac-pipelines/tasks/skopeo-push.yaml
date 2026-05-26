@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: skopeo-push
-  namespace: ci
 spec:
   description: >
     Pushes the local image tarball to a container registry tagging it with both

@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   generateName: cleanup-images-
-  namespace: ci
+  namespace: tekton-ci
 spec:
   pipelineRef:
     resolver: git

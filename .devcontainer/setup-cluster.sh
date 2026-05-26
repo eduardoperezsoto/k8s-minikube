@@ -224,7 +224,7 @@ PAC_TOKEN=$(curl -s -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/jso
 
 kubectl create secret generic gitea-pac-token \
   --from-literal=token="${PAC_TOKEN}" \
-  -n ci --dry-run=client -o yaml | kubectl apply -f -
+  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
 
 # Token consumed by the Tekton git resolver to fetch Pipelines/Tasks from the
 # tekton-pac-pipelines repo via Gitea's SCM API. Read-only is enough.
@@ -247,31 +247,33 @@ kubectl create secret generic gitea-resolver-token \
 
 kubectl create secret generic gitea-pac-webhook \
   --from-literal=webhook-secret="${WEBHOOK_SECRET}" \
-  -n ci --dry-run=client -o yaml | kubectl apply -f -
+  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
 
-# Register webhook → in-cluster PaC controller. Gitea signs the payload with
-# the shared secret; PaC verifies it using the gitea-pac-webhook Secret.
-register_pac_webhook() {
-  local repo_path="$1"
+# Register org-level webhook → in-cluster PaC controller. One hook per org
+# fires for every repo in that org; PaC ignores events from repos without a
+# matching Repository CR. Gitea signs the payload with the shared secret;
+# PaC verifies it using the gitea-pac-webhook Secret.
+register_pac_org_webhook() {
+  local org="$1"
   for HOOK_ID in $(curl -s -H "${GITEA_AUTH}" \
-    "http://localhost:3000/api/v1/repos/${repo_path}/hooks?limit=50" \
+    "http://localhost:3000/api/v1/orgs/${org}/hooks?limit=50" \
     | jq -r '.[].id' 2>/dev/null); do
     curl -s -o /dev/null \
       -X DELETE -H "${GITEA_AUTH}" \
-      "http://localhost:3000/api/v1/repos/${repo_path}/hooks/${HOOK_ID}"
+      "http://localhost:3000/api/v1/orgs/${org}/hooks/${HOOK_ID}"
   done
 
-  curl -s -o /dev/null -w "  Webhook → ${repo_path}: %{http_code}\n" \
+  curl -s -o /dev/null -w "  Webhook → org/${org}: %{http_code}\n" \
     -X POST \
     -H "${GITEA_AUTH}" \
     -H "Content-Type: application/json" \
     -d "$(jq -n --arg secret "${WEBHOOK_SECRET}" \
       '{type:"gitea",active:true,events:["push","pull_request"],config:{url:"http://pipelines-as-code-controller.pipelines-as-code.svc.cluster.local:8080",content_type:"json",secret:$secret}}')" \
-    "http://localhost:3000/api/v1/repos/${repo_path}/hooks"
+    "http://localhost:3000/api/v1/orgs/${org}/hooks"
 }
 
-register_pac_webhook "cnie-c0-apps/app"
-register_pac_webhook "cnie-c0-infra/ci-utils"
+register_pac_org_webhook "cnie-c0-apps"
+register_pac_org_webhook "cnie-c0-infra"
 
 kill $PF_PID
 wait $PF_PID 2>/dev/null || true
@@ -282,13 +284,13 @@ echo "==> 12. Configurando secrets de CI..."
 kubectl create secret generic gitea-credentials \
   --from-literal=.gitconfig="$(printf '[credential]\n    helper = store\n')" \
   --from-literal=.git-credentials="http://admin:admin123@gitea-http.gitea.svc.cluster.local:3000" \
-  -n ci --dry-run=client -o yaml | kubectl apply -f -
+  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic argocd-credentials \
   --from-literal=argocd-url=http://argocd-server.argocd.svc.cluster.local \
   --from-literal=argocd-user=admin \
   --from-literal=argocd-pass="${ARGOCD_PASS}" \
-  -n ci --dry-run=client -o yaml | kubectl apply -f -
+  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
 
 HARBOR_AUTH=$(printf 'admin:Harbor12345' | base64 -w0)
 HARBOR_CONFIG="{\"auths\":{\"harbor.harbor.svc.cluster.local:80\":{\"auth\":\"${HARBOR_AUTH}\"}}}"
@@ -298,7 +300,7 @@ kubectl create secret generic harbor-credentials \
   --from-literal=harbor-url=http://harbor.harbor.svc.cluster.local:80 \
   --from-literal=harbor-user=admin \
   --from-literal=harbor-pass=Harbor12345 \
-  -n ci --dry-run=client -o yaml \
+  -n tekton-ci --dry-run=client -o yaml \
 | sed '/^kind: Secret$/a type: kubernetes.io/dockerconfigjson' \
 | kubectl annotate --local -f - tekton.dev/docker-0=harbor.harbor.svc.cluster.local:80 -o yaml \
 | kubectl apply -f -
@@ -307,8 +309,8 @@ echo "==> 13. Disparando los primeros builds (re-push de ci-utils y app)..."
 kubectl wait --for=condition=established --timeout=60s \
   crd/repositories.pipelinesascode.tekton.dev 2>/dev/null || true
 for i in $(seq 1 12); do
-  kubectl get repository ci-utils -n ci >/dev/null 2>&1 \
-    && kubectl get repository app -n ci >/dev/null 2>&1 \
+  kubectl get repository ci-utils -n tekton-ci >/dev/null 2>&1 \
+    && kubectl get repository app -n tekton-ci >/dev/null 2>&1 \
     && break
   sleep 5
 done

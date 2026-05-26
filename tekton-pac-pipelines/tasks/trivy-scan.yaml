@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: trivy-scan
-  namespace: ci
 spec:
   description: >
     Scans the local image tarball with Trivy. Fails if CRITICAL or HIGH

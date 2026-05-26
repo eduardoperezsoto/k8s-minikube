@@ -2,14 +2,14 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: cleanup-scheduler
-  namespace: ci
+  namespace: tekton-ci
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: cleanup-scheduler
-  namespace: ci
+  namespace: tekton-ci
 rules:
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns"]
@@ -20,7 +20,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: cleanup-scheduler
-  namespace: ci
+  namespace: tekton-ci
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -28,14 +28,14 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: cleanup-scheduler
-    namespace: ci
+    namespace: tekton-ci
 
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: harbor-image-cleanup
-  namespace: ci
+  namespace: tekton-ci
 spec:
   schedule: "0 2 * * *"
   concurrencyPolicy: Forbid
