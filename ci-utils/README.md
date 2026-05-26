@@ -1,20 +1,20 @@
 # ci-utils
 
-Imagen única con utilities Python para las Tasks de CI. Una imagen, varios
-scripts; cada Task elige qué script ejecutar pasándolo en `args`.
+Single image with Python utilities used by the CI Tasks. One image, multiple
+scripts; each Task picks which script to run by passing it in `args`.
 
 ## Layout
 
 ```
-Dockerfile           # ENTRYPOINT = python; copia scripts/ a /app/scripts/
-.tekton/             # PAC: build + scan + push de la imagen
+Dockerfile           # ENTRYPOINT = python; copies scripts/ to /app/scripts/
+.tekton/             # PAC: build + scan + push of the image
 scripts/
-└── cleanup_images.py  # Limpieza retentiva de Harbor según despliegues de ArgoCD
+└── cleanup_images.py  # Harbor retention cleanup driven by ArgoCD-deployed versions
 ```
 
-## Cómo se usa desde una Task
+## How to use it from a Task
 
-`image:` apunta a la imagen y `args:` selecciona el script:
+`image:` points at the image and `args:` selects the script to run:
 
 ```yaml
 steps:
@@ -29,17 +29,11 @@ steps:
 
 ## Build
 
-Cada push a `main` dispara `build-scan-push` (vía PAC) y publica la imagen en
-Harbor con tag = commit SHA + `latest`.
+Every push to `main` triggers `build-scan-push` (via PAC) and publishes the
+image to Harbor tagged with the commit SHA plus `latest`.
 
-## Añadir un nuevo script
+## Adding a new script
 
-1. Crear `scripts/<nombre>.py`.
-2. Push → la imagen se reconstruye con el nuevo script dentro.
-3. Crear/actualizar la Task referenciando `args: ["/app/scripts/<nombre>.py"]`.
-
-## Cuándo crear una imagen distinta
-
-Cuando el tool necesite una base distinta a `python:slim` (ej. `bitnami/kubectl`,
-`hashicorp/terraform`, `node:alpine`). En ese caso, añade una subcarpeta con
-su propio `Dockerfile` y configurar otro trigger PAC con path filter.
+1. Create `scripts/<name>.py`.
+2. Push → the image is rebuilt with the new script baked in.
+3. Create or update the Task referencing `args: ["/app/scripts/<name>.py"]`.
