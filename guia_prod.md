@@ -22,7 +22,7 @@ Recomendación: taggear el repo (`v1.0.0`) para que los consumidores puedan pine
 |---|---|
 | [git-resolver-config.yaml](infra/tekton/git-resolver-config.yaml) | Config del git resolver: `default-org`, `server-url` de Gitea, secret del token |
 | [tekton-pac/repositories/app.yaml](infra/tekton-pac/repositories/app.yaml) | Registra cada repo de app ante PAC (uno por app) |
-| [rbac.yaml](infra/tekton/rbac.yaml) | SA `tekton-pipeline-sa` con `imagePullSecret: harbor-credentials` + Role para que el Dashboard pueda relanzar/borrar PipelineRuns |
+| [rbac.yaml](infra/tekton/rbac.yaml) | SA `tekton-pipeline-sa` con `imagePullSecret: harbor-creds` + Role para que el Dashboard pueda relanzar/borrar PipelineRuns |
 | [cleanup/cleanup-images-cronjob.yaml](infra/tekton/cleanup/cleanup-images-cronjob.yaml) | CronJob diario que crea un PipelineRun de `cleanup-images` |
 | [cleanup/cleanup-images-pipelinerun.yaml](infra/tekton/cleanup/cleanup-images-pipelinerun.yaml) | Plantilla del PipelineRun que lanza el CronJob (vía ConfigMap) |
 | [cleanup/cleanup-images.py](infra/tekton/cleanup/cleanup-images.py) | Script de retención usado por la task `cleanup-images` (vía ConfigMap) |
@@ -57,9 +57,9 @@ Hoy estos secretos están hechos a mano. En prod tienen que vivir en git ya sell
 | `gitea-resolver-token` | `tekton-pipelines-resolvers` | `token` | git resolver — [git-resolver-config.yaml:17-19](infra/tekton/git-resolver-config.yaml#L17-L19) |
 | `gitea-pac-token` | `tekton-ci` | `token` | PAC — [app.yaml:12](infra/tekton-pac/repositories/app.yaml#L12) |
 | `gitea-pac-webhook` | `tekton-ci` | `webhook-secret` | PAC valida firma — [app.yaml:15](infra/tekton-pac/repositories/app.yaml#L15) |
-| `gitea-credentials` | `tekton-ci` | `.gitconfig`, `.git-credentials` | workspace `basic-auth` — [git-clone.yaml:38-40](tekton-pac-pipelines/tasks/git-clone.yaml#L38-L40) |
-| `harbor-credentials` | `tekton-ci` | `.dockerconfigjson`, `harbor-url`, `harbor-user`, `harbor-pass` | push ([skopeo-push.yaml](tekton-pac-pipelines/tasks/skopeo-push.yaml#L38)), cleanup ([cleanup-images.yaml:42-56](tekton-pac-pipelines/tasks/cleanup-images.yaml#L42-L56)), e `imagePullSecret` del SA ([rbac.yaml:6-9](infra/tekton/rbac.yaml#L6-L9)) |
-| `argocd-credentials` | `tekton-ci` | `argocd-url`, `argocd-user`, `argocd-pass` | cleanup — [cleanup-images.yaml:27-41](tekton-pac-pipelines/tasks/cleanup-images.yaml#L27-L41) |
+| `gitea-creds` | `tekton-ci` | `.gitconfig`, `.git-credentials` | workspace `basic-auth` — [git-clone.yaml:38-40](tekton-pac-pipelines/tasks/git-clone.yaml#L38-L40) |
+| `harbor-creds` | `tekton-ci` | `.dockerconfigjson`, `url`, `username`, `password` | push ([skopeo-push.yaml](tekton-pac-pipelines/tasks/skopeo-push.yaml#L38)), cleanup ([cleanup-images.yaml:42-56](tekton-pac-pipelines/tasks/cleanup-images.yaml#L42-L56)), e `imagePullSecret` del SA ([rbac.yaml:6-9](infra/tekton/rbac.yaml#L6-L9)) |
+| `argocd-creds` | `tekton-ci` | `url`, `username`, `password` | cleanup — [cleanup-images.yaml:27-41](tekton-pac-pipelines/tasks/cleanup-images.yaml#L27-L41) |
 
 Flujo por cada secret:
 
@@ -68,7 +68,7 @@ Flujo por cada secret:
 3. Commit en `infra/tekton/secrets/`.
 4. Añadirlo al `kustomization.yaml`.
 
-> **Nota:** `harbor-credentials` tiene doble propósito (Docker registry auth + claves API para el cleanup). O lo mantenés con todas las claves en un único secret, o lo partís en dos.
+> **Nota:** `harbor-creds` tiene doble propósito (Docker registry auth + claves API para el cleanup). O lo mantenés con todas las claves en un único secret, o lo partís en dos.
 
 ## 6. Webhook de Gitea → PAC
 

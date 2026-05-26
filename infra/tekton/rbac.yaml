@@ -4,9 +4,9 @@ metadata:
   name: tekton-pipeline-sa
   namespace: tekton-ci
 secrets:
-  - name: harbor-credentials
+  - name: harbor-creds
 imagePullSecrets:
-  - name: harbor-credentials
+  - name: harbor-creds
 
 # tekton-pipeline-sa intentionally has no Role/RoleBinding: Tasks don't call
 # the K8s API. If a future Task needs it, define a scoped Role for that Task.

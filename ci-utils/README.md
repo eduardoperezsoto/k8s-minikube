@@ -23,7 +23,7 @@ steps:
     args: ["/app/scripts/cleanup_images.py"]
     env:
       - name: ARGOCD_URL
-        valueFrom: { secretKeyRef: { name: argocd-credentials, key: argocd-url } }
+        valueFrom: { secretKeyRef: { name: argocd-creds, key: url } }
       # ...
 ```
 

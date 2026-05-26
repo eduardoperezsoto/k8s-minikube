@@ -22,30 +22,30 @@ spec:
         - name: ARGOCD_URL
           valueFrom:
             secretKeyRef:
-              name: argocd-credentials
-              key: argocd-url
+              name: argocd-creds
+              key: url
         - name: ARGOCD_USER
           valueFrom:
             secretKeyRef:
-              name: argocd-credentials
-              key: argocd-user
+              name: argocd-creds
+              key: username
         - name: ARGOCD_PASS
           valueFrom:
             secretKeyRef:
-              name: argocd-credentials
-              key: argocd-pass
+              name: argocd-creds
+              key: password
         - name: HARBOR_URL
           valueFrom:
             secretKeyRef:
-              name: harbor-credentials
-              key: harbor-url
+              name: harbor-creds
+              key: url
         - name: HARBOR_USER
           valueFrom:
             secretKeyRef:
-              name: harbor-credentials
-              key: harbor-user
+              name: harbor-creds
+              key: username
         - name: HARBOR_PASS
           valueFrom:
             secretKeyRef:
-              name: harbor-credentials
-              key: harbor-pass
+              name: harbor-creds
+              key: password

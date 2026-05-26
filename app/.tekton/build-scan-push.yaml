@@ -32,7 +32,7 @@ spec:
               storage: 1Gi #TBR
     - name: dockerconfig
       secret:
-        secretName: harbor-credentials
+        secretName: harbor-creds
     - name: basic-auth
       secret:
-        secretName: gitea-credentials
+        secretName: gitea-creds
