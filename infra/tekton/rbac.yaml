@@ -1,15 +1,23 @@
+# Build Push SA — used by build-scan-push PipelineRuns.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: tekton-pipeline-sa
+  name: build-push-sa
   namespace: tekton-ci
 secrets:
-  - name: harbor-creds
-imagePullSecrets:
-  - name: harbor-creds
+  - name: gitea-creds
+  - name: harbor-dockerconfig
 
-# tekton-pipeline-sa intentionally has no Role/RoleBinding: Tasks don't call
-# the K8s API. If a future Task needs it, define a scoped Role for that Task.
+---
+
+# Cleanup Images SA — used by cleanup-images PipelineRuns.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cleanup-images-sa
+  namespace: tekton-ci
+imagePullSecrets:
+  - name: harbor-dockerconfig
 
 ---
 

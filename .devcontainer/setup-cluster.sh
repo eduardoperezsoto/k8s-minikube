@@ -282,9 +282,12 @@ ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpa
 
 echo "==> 12. Configurando secrets de CI..."
 kubectl create secret generic gitea-creds \
-  --from-literal=.gitconfig="$(printf '[credential]\n    helper = store\n')" \
-  --from-literal=.git-credentials="http://admin:admin123@gitea-http.gitea.svc.cluster.local:3000" \
-  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
+  --from-literal=username=admin \
+  --from-literal=password=admin123 \
+  -n tekton-ci --dry-run=client -o yaml \
+| sed '/^kind: Secret$/a type: kubernetes.io/basic-auth' \
+| kubectl annotate --local -f - tekton.dev/git-0=http://gitea-http.gitea.svc.cluster.local:3000 -o yaml \
+| kubectl apply -f -
 
 kubectl create secret generic argocd-creds \
   --from-literal=url=http://argocd-server.argocd.svc.cluster.local \
@@ -292,18 +295,19 @@ kubectl create secret generic argocd-creds \
   --from-literal=password="${ARGOCD_PASS}" \
   -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
 
-HARBOR_AUTH=$(printf 'admin:Harbor12345' | base64 -w0)
-HARBOR_CONFIG="{\"auths\":{\"harbor.harbor.svc.cluster.local:80\":{\"auth\":\"${HARBOR_AUTH}\"}}}"
+kubectl create secret docker-registry harbor-dockerconfig \
+  --docker-server=harbor.harbor.svc.cluster.local:80 \
+  --docker-username=admin \
+  --docker-password=Harbor12345 \
+  -n tekton-ci --dry-run=client -o yaml \
+| kubectl annotate --local -f - tekton.dev/docker-0=harbor.harbor.svc.cluster.local:80 -o yaml \
+| kubectl apply -f -
+
 kubectl create secret generic harbor-creds \
-  --from-literal=.dockerconfigjson="${HARBOR_CONFIG}" \
-  --from-literal=config.json="${HARBOR_CONFIG}" \
   --from-literal=url=http://harbor.harbor.svc.cluster.local:80 \
   --from-literal=username=admin \
   --from-literal=password=Harbor12345 \
-  -n tekton-ci --dry-run=client -o yaml \
-| sed '/^kind: Secret$/a type: kubernetes.io/dockerconfigjson' \
-| kubectl annotate --local -f - tekton.dev/docker-0=harbor.harbor.svc.cluster.local:80 -o yaml \
-| kubectl apply -f -
+  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> 13. Disparando los primeros builds (re-push de ci-utils y app)..."
 kubectl wait --for=condition=established --timeout=60s \

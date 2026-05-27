@@ -4,6 +4,8 @@ metadata:
   generateName: cleanup-images-
   namespace: tekton-ci
 spec:
+  taskRunTemplate:
+    serviceAccountName: cleanup-images-sa
   pipelineRef:
     resolver: git
     params:
@@ -11,5 +13,3 @@ spec:
         value: tekton-pac-pipelines
       - name: pathInRepo
         value: pipelines/cleanup-images.yaml
-  taskRunTemplate:
-    serviceAccountName: tekton-pipeline-sa

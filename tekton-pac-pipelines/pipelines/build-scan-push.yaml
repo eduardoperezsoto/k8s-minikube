@@ -36,8 +36,6 @@ spec:
 
   workspaces:
     - name: source
-    - name: dockerconfig
-    - name: basic-auth
 
   tasks:
     - name: git-clone
@@ -56,8 +54,6 @@ spec:
       workspaces:
         - name: output
           workspace: source
-        - name: basic-auth
-          workspace: basic-auth
 
     - name: kaniko-build
       taskRef:
@@ -114,5 +110,3 @@ spec:
       workspaces:
         - name: source
           workspace: source
-        - name: dockerconfig
-          workspace: dockerconfig

@@ -17,9 +17,6 @@ spec:
   workspaces:
     - name: output
       description: Workspace where the source is cloned
-    - name: basic-auth
-      description: Git credentials for Gitea
-      mountPath: /workspace/basic-auth
   steps:
     - name: clone
       image: alpine/git:2.52.0
@@ -34,9 +31,6 @@ spec:
         #!/bin/sh
         set -eu
         echo "Cloning $(params.url) @ $(params.revision)..."
-        cp "$(workspaces.basic-auth.path)/.gitconfig"       "$HOME/.gitconfig"
-        cp "$(workspaces.basic-auth.path)/.git-credentials" "$HOME/.git-credentials"
-        chmod 400 "$HOME/.gitconfig" "$HOME/.git-credentials"
         git init -q "$(workspaces.output.path)"
         cd "$(workspaces.output.path)"
         git remote add origin "$(params.url)"
