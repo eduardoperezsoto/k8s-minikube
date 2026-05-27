@@ -1,0 +1,18 @@
+# Docker config para pull/push a Harbor (usada por build-push-sa y cleanup-images-sa).
+# Sellar con: kubeseal --format yaml < harbor-dockerconfig.yaml > ../harbor-dockerconfig-sealed-secret.yaml
+#
+# Generar el .dockerconfigjson con:
+#   kubectl create secret docker-registry harbor-dockerconfig \
+#     --docker-server=harbor.c0.cnie.internal \
+#     --docker-username=<user> \
+#     --docker-password=<password> \
+#     --namespace=cnie-pipelines-as-code \
+#     --dry-run=client -o yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-dockerconfig
+  namespace: cnie-pipelines-as-code
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: <base64-dockerconfigjson>

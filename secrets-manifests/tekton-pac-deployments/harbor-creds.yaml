@@ -1,0 +1,12 @@
+# Credenciales de Harbor para la task cleanup-images (API REST).
+# Sellar con: kubeseal --format yaml < harbor-creds.yaml > ../harbor-creds-sealed-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-creds
+  namespace: cnie-pipelines-as-code
+type: Opaque
+stringData:
+  url: https://harbor.c0.cnie.internal
+  username: <harbor-user>
+  password: <harbor-password>

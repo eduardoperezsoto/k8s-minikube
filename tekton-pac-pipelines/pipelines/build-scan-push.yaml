@@ -23,7 +23,7 @@ spec:
       default: "http://gitea-http.gitea.svc.cluster.local:3000" #TBR
     - name: harbor-registry
       type: string
-      description: In-cluster Harbor registry address
+      description: Harbor registry address (ingress hostname, no protocol)
       default: "harbor.harbor.svc.cluster.local:80" #TBR
     - name: dockerfile
       type: string

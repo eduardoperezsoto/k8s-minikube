@@ -1,0 +1,12 @@
+# Credenciales de ArgoCD para la task cleanup-images (consulta apps desplegadas).
+# Sellar con: kubeseal --format yaml < argocd-creds.yaml > ../argocd-creds-sealed-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-creds
+  namespace: cnie-pipelines-as-code
+type: Opaque
+stringData:
+  url: https://argocd.c0.cnie.internal
+  username: <argocd-user>
+  password: <argocd-password>

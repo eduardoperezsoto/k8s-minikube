@@ -1,0 +1,10 @@
+# Sellar con: kubeseal --format yaml < gitea-resolver-token.yaml > ../gitea-resolver-token-sealed-secret.yaml
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitea-resolver-token
+  namespace: cnie-tekton-resolvers
+type: Opaque
+stringData:
+  token: <tu-token-de-gitea>
