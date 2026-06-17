@@ -17,6 +17,7 @@ Required environment variables:
   HARBOR_PASS
 """
 
+import argparse
 import os
 import sys
 from urllib.parse import quote
@@ -124,7 +125,7 @@ def delete_artifact(project: str, repo: str, digest: str) -> None:
 
 # ─── Retention logic ──────────────────────────────────────────────────────────
 
-def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -> tuple[int, int]:
+def process_repository(project: str, repo: str, images_in_use: dict[str, str], dry_run: bool = False) -> tuple[int, int]:
     harbor_registry = HARBOR_URL.split("://")[-1]
     full_ref = f"{harbor_registry}/{project}/{repo}"
     artifacts_raw = get_artifacts(project, repo)
@@ -170,12 +171,13 @@ def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -
             print(f"  KEEP    {full_ref}:{tag_str}  (pushed: {artifact['push_time']})")
             kept += 1
         else:
-            print(f"  DELETE  {full_ref}:{tag_str}  (pushed: {artifact['push_time']})")
-            try:
-                delete_artifact(project, repo, artifact["digest"])
-                deleted += 1
-            except requests.HTTPError as exc:
-                print(f"    ERROR deleting digest {artifact['digest'][:16]}...: {exc}")
+            print(f"  {'[DRY-RUN] ' if dry_run else ''}DELETE  {full_ref}:{tag_str}  (pushed: {artifact['push_time']})")
+            if not dry_run:
+                try:
+                    delete_artifact(project, repo, artifact["digest"])
+                    deleted += 1
+                except requests.HTTPError as exc:
+                    print(f"    ERROR deleting digest {artifact['digest'][:16]}...: {exc}")
 
     return deleted, kept
 
@@ -183,8 +185,12 @@ def process_repository(project: str, repo: str, images_in_use: dict[str, str]) -
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be deleted without actually deleting")
+    args = parser.parse_args()
+
     print("=" * 60)
-    print("  Harbor Image Cleanup")
+    print("  Harbor Image Cleanup" + (" [DRY-RUN]" if args.dry_run else ""))
     print("=" * 60)
 
     print("\n[1/4] Authenticating with ArgoCD...")
@@ -228,7 +234,7 @@ def main() -> int:
 
         for repo in repos:
             try:
-                deleted, kept = process_repository(project, repo, images_in_use)
+                deleted, kept = process_repository(project, repo, images_in_use, args.dry_run)
                 total_deleted += deleted
                 total_kept    += kept
             except Exception as exc:
@@ -238,7 +244,7 @@ def main() -> int:
     status = "FAILURE" if errors else "SUCCESS"
     print("\n" + "=" * 60)
     print(f"  Final report")
-    print(f"  Deleted : {total_deleted} images")
+    print(f"  {'Would delete' if args.dry_run else 'Deleted'}: {total_deleted} images")
     print(f"  Kept    : {total_kept} images")
     print(f"  Status  : {status}")
     print("=" * 60)

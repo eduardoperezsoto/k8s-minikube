@@ -32,6 +32,6 @@
   // 5. POST-CREATE: Instala todo solo la primera vez que se crea el contenedor
   "postCreateCommand": "bash .devcontainer/setup-cluster.sh",
 
-  // 6. POST-START: En reopen/restart solo arranca minikube (el cluster ya está instalado)
-  "postStartCommand": "minikube start --driver=docker --force"
+  // 6. POST-START: En reopen/restart arranca minikube y restaura el /etc/hosts del nodo
+  "postStartCommand": "bash .devcontainer/post-start.sh"
 }

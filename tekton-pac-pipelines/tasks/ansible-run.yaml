@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: ansible-run
+spec:
+  description: >
+    Runs an Ansible playbook from the cloned source workspace against the nodes
+    in the given inventory. The SSH private key is provided via the ssh-key
+    workspace (a Secret) and copied to a 0600 file so ssh accepts it.
+  params:
+    - name: playbook
+      type: string
+      description: Playbook path, relative to the workspace root
+      default: install-ca.yml
+    - name: inventory
+      type: string
+      description: Inventory path, relative to the workspace root
+      default: inventory/hosts.ini
+  workspaces:
+    - name: source
+      description: Workspace containing the playbook and inventory
+    - name: ssh-key
+      description: Secret-backed workspace holding the SSH private key (key id_rsa)
+  steps:
+    - name: ansible-playbook
+      image: alpine/ansible:2.21.0
+      env:
+        # Ephemeral pod has no known_hosts; the minikube inventory also sets this.
+        - name: ANSIBLE_HOST_KEY_CHECKING
+          value: "False"
+      computeResources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      script: |
+        #!/bin/sh
+        set -eu
+        # Secret mounts read-only at 0644; ssh rejects keys that are too open.
+        mkdir -p "$HOME/.ssh"
+        cp "$(workspaces.ssh-key.path)/id_rsa" "$HOME/.ssh/id_rsa"
+        chmod 600 "$HOME/.ssh/id_rsa"
+        cd "$(workspaces.source.path)"
+        echo "Running ansible-playbook -i $(params.inventory) $(params.playbook)"
+        ansible-playbook \
+          --private-key "$HOME/.ssh/id_rsa" \
+          -i "$(params.inventory)" \
+          "$(params.playbook)"

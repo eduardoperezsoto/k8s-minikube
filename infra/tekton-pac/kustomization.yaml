@@ -9,6 +9,7 @@ resources:
   - cleanup/pipelinerun-pruner-cronjob.yaml
   - repositories/app.yaml
   - repositories/ci-utils.yaml
+  - repositories/ansible-playbooks.yaml
 
 configMapGenerator:
   - name: cleanup-pipelinerun-manifest

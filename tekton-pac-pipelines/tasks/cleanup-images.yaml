@@ -6,11 +6,22 @@ spec:
   description: >
     Cleans up Harbor images, keeping undeployed builds newer than the deployed
     version, the deployed version itself, and the previous one as rollback
-    target. Deletes everything older.
+    target. Deletes everything older. Set dry-run=true to preview deletions
+    without removing anything.
+  params:
+    - name: dry-run
+      type: string
+      description: When "true", only logs what would be deleted without deleting.
+      default: "false"
   steps:
     - name: cleanup
       image: harbor.harbor.svc.cluster.local:80/cnie-c0-infra/ci-utils:latest #TBR
-      args: ["/app/scripts/cleanup_images.py"]
+      command: ["sh", "-c"]
+      args:
+        - |
+          FLAG=""
+          [ "$DRY_RUN" = "true" ] && FLAG="--dry-run"
+          exec python /app/scripts/cleanup_images.py $FLAG
       computeResources:
         requests:
           cpu: 100m
@@ -19,6 +30,8 @@ spec:
           cpu: 500m
           memory: 512Mi
       env:
+        - name: DRY_RUN
+          value: $(params.dry-run)
         - name: ARGOCD_URL
           valueFrom:
             secretKeyRef:

@@ -1,0 +1,80 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: skopeo-mirror
+spec:
+  description: >
+    Mirrors public container images into Harbor. Reads a YAML list of
+    source/destination pairs from the workspace and copies each entry with
+    skopeo, preserving multi-arch manifests. Failing entries do not stop the
+    rest; the task fails at the end if any copy failed.
+  params:
+    - name: images-file
+      type: string
+      description: Path to the mirror list YAML, relative to the workspace root
+      default: harbor-public-images.yaml
+    - name: harbor-registry
+      type: string
+      description: Harbor registry address (ingress hostname, no protocol)
+      default: "harbor.c0.cnie.internal"
+  workspaces:
+    - name: source
+      description: Workspace containing the mirror list file
+  steps:
+    - name: parse-list
+      image: mikefarah/yq:4.53.3
+      securityContext:
+        runAsUser: 0
+      computeResources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      script: |
+        #!/bin/sh
+        set -eu
+        FILE="$(workspaces.source.path)/$(params.images-file)"
+        LIST="$(workspaces.source.path)/mirror-list.txt"
+        yq '.images[] | (.source // "MISSING") + " " + (.destination // "MISSING")' \
+          "$FILE" > "$LIST"
+        if grep -q "MISSING" "$LIST"; then
+          echo "ERROR: entries in $(params.images-file) must have both 'source' and 'destination':"
+          grep -n "MISSING" "$LIST"
+          exit 1
+        fi
+        echo "Images to mirror: $(wc -l < "$LIST")"
+        cat "$LIST"
+    - name: mirror
+      image: quay.io/skopeo/stable:v1.22.2
+      computeResources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+      script: |
+        #!/bin/sh
+        set -u
+        LIST="$(workspaces.source.path)/mirror-list.txt"
+        failed=""
+        while read -r src dst; do
+          [ -z "$src" ] && continue
+          echo "==> Mirroring $src -> $(params.harbor-registry)/$dst"
+          if ! skopeo copy --all \
+              --authfile "$HOME/.docker/config.json" \
+              --src-tls-verify=false \
+              --dest-tls-verify=false \
+              "docker://$src" \
+              "docker://$(params.harbor-registry)/$dst"; then
+            echo "ERROR: failed to mirror $src"
+            failed="$failed $src"
+          fi
+        done < "$LIST"
+        if [ -n "$failed" ]; then
+          echo "The following images failed to mirror:$failed"
+          exit 1
+        fi
+        echo "Done."

@@ -7,6 +7,12 @@ spec:
     Cleans up Harbor images, keeping undeployed builds newer than the deployed
     version, the deployed version itself, and the previous one as rollback
     target. Deletes everything older. Runs daily via CronJob at 02:00 or manually.
+    Set dry-run=true to preview deletions without removing anything.
+  params:
+    - name: dry-run
+      type: string
+      description: When "true", only logs what would be deleted without deleting.
+      default: "false"
   tasks:
     - name: cleanup
       taskRef:
@@ -16,3 +22,6 @@ spec:
             value: tekton-pac-pipelines
           - name: pathInRepo
             value: tasks/cleanup-images.yaml
+      params:
+        - name: dry-run
+          value: $(params.dry-run)

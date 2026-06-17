@@ -103,6 +103,11 @@ curl -s -o /dev/null -w "  Crear repo ci-utils: HTTP %{http_code}\n" \
   -d '{"name":"ci-utils","private":true,"auto_init":false}' \
   "http://localhost:3000/api/v1/orgs/cnie-c0-infra/repos" || true
 
+curl -s -o /dev/null -w "  Crear repo ansible-playbooks: HTTP %{http_code}\n" \
+  -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
+  -d '{"name":"ansible-playbooks","private":true,"auto_init":false}' \
+  "http://localhost:3000/api/v1/orgs/cnie-c0-infra/repos" || true
+
 # Crear repo app bajo cnie-c0-apps
 curl -s -o /dev/null -w "  Crear repo app:   HTTP %{http_code}\n" \
   -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
@@ -144,6 +149,18 @@ git -C "${CIUTILS_TMP}" commit -m "ci-utils snapshot"
 git -C "${CIUTILS_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/ci-utils.git
 git -C "${CIUTILS_TMP}" push gitea HEAD:main --force
 rm -rf "${CIUTILS_TMP}"
+
+# Push ansible/ → repo ansible-playbooks
+ANSIBLE_TMP=$(mktemp -d)
+cp -r /workspaces/minikube/ansible/. "${ANSIBLE_TMP}/"
+git -C "${ANSIBLE_TMP}" init
+git -C "${ANSIBLE_TMP}" config user.email "setup@local"
+git -C "${ANSIBLE_TMP}" config user.name "Setup"
+git -C "${ANSIBLE_TMP}" add -A
+git -C "${ANSIBLE_TMP}" commit -m "ansible snapshot"
+git -C "${ANSIBLE_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/ansible-playbooks.git
+git -C "${ANSIBLE_TMP}" push gitea HEAD:main --force
+rm -rf "${ANSIBLE_TMP}"
 
 # Push app/
 APP_TMP=$(mktemp -d)

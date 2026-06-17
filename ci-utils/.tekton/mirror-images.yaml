@@ -1,13 +1,11 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  generateName: "{{ repo_name }}-build-scan-push-"
+  generateName: "{{ repo_name }}-mirror-images-"
   annotations:
     pipelinesascode.tekton.dev/on-cel-expression: >
       event == "push" && target_branch == "main" &&
-      ("Dockerfile".pathChanged() || "requirements.txt".pathChanged() ||
-       "scripts/***".pathChanged() || "certs/***".pathChanged() ||
-       ".tekton/build-scan-push.yaml".pathChanged())
+      "harbor-public-images.yaml".pathChanged()
 spec:
   taskRunTemplate:
     serviceAccountName: build-push-sa
@@ -17,9 +15,9 @@ spec:
       - name: repo
         value: tekton-pac-pipelines
       - name: pathInRepo
-        value: pipelines/build-scan-push.yaml
+        value: pipelines/mirror-images.yaml
   params:
-    - name: repo-owner
+    - name: gitea-org
       value: "{{ repo_owner }}"
     - name: repo-name
       value: "{{ repo_name }}"
@@ -30,7 +28,7 @@ spec:
       volumeClaimTemplate:
         spec:
           accessModes: [ReadWriteOnce]
-          storageClassName: standard #TBR
+          storageClassName: standard
           resources:
             requests:
               storage: 1Gi

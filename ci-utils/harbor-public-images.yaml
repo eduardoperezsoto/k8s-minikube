@@ -1,0 +1,19 @@
+# Public images mirrored into Harbor.
+#
+# Every push to main that modifies this file triggers the mirror-images
+# pipeline, which copies each entry with skopeo.
+#
+#   source:      full public image reference, registry included
+#   destination: project/image:tag on Harbor (without the registry hostname)
+#
+# The Harbor project must already exist.
+#
+# Example:
+#   images:
+#     - source: docker.io/library/nginx:1.29.4
+#       destination: c0-public/nginx:1.29.4
+#     - source: ghcr.io/fluxcd/source-controller:v1.4.1
+#       destination: c0-public/source-controller:v1.4.1
+images:
+  - source: docker.io/library/nginx:1.31.1
+    destination: c0-public/nginx:1.31.1

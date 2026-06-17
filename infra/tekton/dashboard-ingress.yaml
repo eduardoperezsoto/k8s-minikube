@@ -1,18 +1,17 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
 metadata:
   name: tekton-dashboard
   namespace: tekton-pipelines
 spec:
   ingressClassName: apisix
-  rules:
-    - host: tekton.127.0.0.1.nip.io
-      http:
+  http:
+    - name: tekton-dashboard
+      match:
+        hosts:
+          - tekton.127.0.0.1.nip.io
         paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: tekton-dashboard
-                port:
-                  number: 9097
+          - /*
+      backends:
+        - serviceName: tekton-dashboard
+          servicePort: 9097

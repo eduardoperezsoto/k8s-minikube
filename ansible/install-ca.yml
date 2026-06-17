@@ -1,0 +1,77 @@
+---
+# Instala/actualiza la CA interna (cnie-ca) en el trust store del SO de cada
+# nodo de Kubernetes (C0 y C1).
+#
+# Pensado para la fase de explotacion: reejecutalo cada vez que rote la CA.
+# Es idempotente: si el certificado ya esta presente e identico, no hace nada.
+#
+# Usa la CA de ./files/cnie-ca.crt. Al rotar, reemplaza ese fichero y reejecuta.
+#
+# Ejemplos:
+#   ansible-playbook install-ca.yml                 # todos los nodos (C0 + C1)
+#   ansible-playbook install-ca.yml --limit c0      # solo cluster 0
+#   ansible-playbook install-ca.yml --check --diff  # simulacro, sin cambios
+#   ansible-playbook install-ca.yml -e node_ca_reload_containerd=true
+#
+# serial: 1 -> procesa nodo a nodo, para no reiniciar containerd en todo el
+# cluster a la vez si se activa el reinicio del runtime.
+- name: Instalar/actualizar la CA interna en los nodos de Kubernetes
+  hosts: kube_nodes
+  become: true
+  serial: 1
+  gather_facts: true
+
+  vars:
+    node_ca_cert_name: cnie-ca
+    node_ca_cert_file: files/cnie-ca.crt
+    node_ca_reload_containerd: false
+    node_ca_dest_debian: "/usr/local/share/ca-certificates/{{ node_ca_cert_name }}.crt"
+    node_ca_dest_redhat: "/etc/pki/ca-trust/source/anchors/{{ node_ca_cert_name }}.crt"
+
+  tasks:
+    - name: Abortar en familias de SO no soportadas
+      ansible.builtin.fail:
+        msg: >-
+          Familia de SO '{{ ansible_facts['os_family'] }}' no soportada.
+          Soportadas: Debian, RedHat.
+      when: ansible_facts['os_family'] not in ['Debian', 'RedHat']
+
+    - name: Instalar la CA en el trust store (Debian/Ubuntu)
+      ansible.builtin.copy:
+        src: "{{ node_ca_cert_file }}"
+        dest: "{{ node_ca_dest_debian }}"
+        owner: root
+        group: root
+        mode: "0644"
+      when: ansible_facts['os_family'] == 'Debian'
+      notify: Actualizar trust store (Debian)
+
+    - name: Instalar la CA en el trust store (RHEL family)
+      ansible.builtin.copy:
+        src: "{{ node_ca_cert_file }}"
+        dest: "{{ node_ca_dest_redhat }}"
+        owner: root
+        group: root
+        mode: "0644"
+      when: ansible_facts['os_family'] == 'RedHat'
+      notify: Actualizar trust store (RedHat)
+
+  handlers:
+    # Solo corren cuando la copia reporta 'changed' -> idempotencia.
+    - name: Actualizar trust store (Debian)
+      ansible.builtin.command:
+        cmd: update-ca-certificates
+      changed_when: true
+      notify: Reiniciar containerd
+
+    - name: Actualizar trust store (RedHat)
+      ansible.builtin.command:
+        cmd: update-ca-trust extract
+      changed_when: true
+      notify: Reiniciar containerd
+
+    - name: Reiniciar containerd
+      ansible.builtin.systemd:
+        name: containerd
+        state: restarted
+      when: node_ca_reload_containerd | bool

@@ -1,0 +1,73 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: install-ca
+spec:
+  description: >
+    Clones the ansible-playbooks repo and runs install-ca.yml to (re)install the
+    internal CA into the trust store of every Kubernetes node in the inventory.
+    Triggered when the CA under files/ changes.
+  params:
+    - name: gitea-org
+      type: string
+      description: Org/owner on Gitea (e.g. cnie-c0-infra)
+    - name: repo-name
+      type: string
+      description: Repo on Gitea containing the playbook
+    - name: revision
+      type: string
+      description: Git commit SHA to check out
+    - name: gitea-base
+      type: string
+      description: In-cluster base URL of Gitea
+      default: "http://gitea-http.gitea.svc.cluster.local:3000" #TBR
+    - name: playbook
+      type: string
+      description: Playbook path, relative to the repo root
+      default: install-ca.yml
+    - name: inventory
+      type: string
+      description: Inventory path, relative to the repo root
+      default: inventory/hosts.ini
+
+  workspaces:
+    - name: source
+    - name: ssh-key
+
+  tasks:
+    - name: git-clone
+      taskRef:
+        resolver: git
+        params:
+          - name: repo
+            value: tekton-pac-pipelines
+          - name: pathInRepo
+            value: tasks/git-clone.yaml
+      params:
+        - name: url
+          value: "$(params.gitea-base)/$(params.gitea-org)/$(params.repo-name).git"
+        - name: revision
+          value: $(params.revision)
+      workspaces:
+        - name: output
+          workspace: source
+
+    - name: ansible-run
+      runAfter: [git-clone]
+      taskRef:
+        resolver: git
+        params:
+          - name: repo
+            value: tekton-pac-pipelines
+          - name: pathInRepo
+            value: tasks/ansible-run.yaml
+      params:
+        - name: playbook
+          value: $(params.playbook)
+        - name: inventory
+          value: $(params.inventory)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: ssh-key
+          workspace: ssh-key

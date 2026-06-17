@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: mirror-images
+spec:
+  description: >
+    Clones the repo containing the mirror list (harbor-public-images.yaml) and copies every
+    listed public image into Harbor with skopeo.
+  params:
+    - name: gitea-org
+      type: string
+      description: Org/owner on Gitea (e.g. cnie-c0-infra)
+    - name: repo-name
+      type: string
+      description: Repo on Gitea containing the mirror list
+    - name: revision
+      type: string
+      description: Git commit SHA to check out
+    - name: gitea-base
+      type: string
+      description: In-cluster base URL of Gitea
+      default: "http://gitea-http.gitea.svc.cluster.local:3000" #TBR
+    - name: harbor-registry
+      type: string
+      description: Harbor registry address (ingress hostname, no protocol)
+      default: "harbor.harbor.svc.cluster.local:80" #TBR
+    - name: images-file
+      type: string
+      description: Path to the mirror list YAML, relative to the repo root
+      default: harbor-public-images.yaml
+
+  workspaces:
+    - name: source
+
+  tasks:
+    - name: git-clone
+      taskRef:
+        resolver: git
+        params:
+          - name: repo
+            value: tekton-pac-pipelines
+          - name: pathInRepo
+            value: tasks/git-clone.yaml
+      params:
+        - name: url
+          value: "$(params.gitea-base)/$(params.gitea-org)/$(params.repo-name).git"
+        - name: revision
+          value: $(params.revision)
+      workspaces:
+        - name: output
+          workspace: source
+
+    - name: skopeo-mirror
+      runAfter: [git-clone]
+      taskRef:
+        resolver: git
+        params:
+          - name: repo
+            value: tekton-pac-pipelines
+          - name: pathInRepo
+            value: tasks/skopeo-mirror.yaml
+      params:
+        - name: images-file
+          value: $(params.images-file)
+        - name: harbor-registry
+          value: $(params.harbor-registry)
+      workspaces:
+        - name: source
+          workspace: source

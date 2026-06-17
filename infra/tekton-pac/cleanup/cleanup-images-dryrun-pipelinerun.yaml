@@ -1,0 +1,21 @@
+# Manual dry-run of the Harbor image cleanup: logs what would be deleted
+# without removing anything. Launch with:
+#   kubectl create -f cleanup-images-dryrun-pipelinerun.yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: cleanup-images-dryrun-
+  namespace: tekton-ci
+spec:
+  taskRunTemplate:
+    serviceAccountName: cleanup-images-sa
+  params:
+    - name: dry-run
+      value: "true"
+  pipelineRef:
+    resolver: git
+    params:
+      - name: repo
+        value: tekton-pac-pipelines
+      - name: pathInRepo
+        value: pipelines/cleanup-images.yaml

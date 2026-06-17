@@ -1,30 +1,31 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  generateName: "{{ repo_name }}-build-scan-push-"
+  generateName: "{{ repo_name }}-install-ca-"
   annotations:
     pipelinesascode.tekton.dev/on-cel-expression: >
       event == "push" && target_branch == "main" &&
-      ("Dockerfile".pathChanged() || "requirements.txt".pathChanged() ||
-       "scripts/***".pathChanged() || "certs/***".pathChanged() ||
-       ".tekton/build-scan-push.yaml".pathChanged())
+      ("files/***".pathChanged() || "install-ca.yml".pathChanged() ||
+       ".tekton/install-ca.yaml".pathChanged())
 spec:
   taskRunTemplate:
-    serviceAccountName: build-push-sa
+    serviceAccountName: ansible-run-sa
   pipelineRef:
     resolver: git
     params:
       - name: repo
         value: tekton-pac-pipelines
       - name: pathInRepo
-        value: pipelines/build-scan-push.yaml
+        value: pipelines/install-ca.yaml
   params:
-    - name: repo-owner
+    - name: gitea-org
       value: "{{ repo_owner }}"
     - name: repo-name
       value: "{{ repo_name }}"
     - name: revision
       value: "{{ revision }}"
+    - name: inventory
+      value: inventory/minikube.ini #minikube test target; switch to inventory/hosts.ini for prod.
   workspaces:
     - name: source
       volumeClaimTemplate:
@@ -34,3 +35,6 @@ spec:
           resources:
             requests:
               storage: 1Gi
+    - name: ssh-key
+      secret:
+        secretName: ansible-node-ssh

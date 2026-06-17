@@ -17,7 +17,7 @@ spec:
         - name: harbor-pull-secret
       containers:
         - name: app
-          image: harbor.harbor.svc.cluster.local:80/cnie-c0-apps/app:f45d776a0ef93d09fbe3db1d3bad11bbbb87edcc
+          image: harbor.harbor.svc.cluster.local:80/cnie-c0-apps/app:latest #fix in prod
           ports:
             - containerPort: 80
           resources:

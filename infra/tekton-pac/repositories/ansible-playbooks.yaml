@@ -1,0 +1,16 @@
+apiVersion: pipelinesascode.tekton.dev/v1alpha1
+kind: Repository
+metadata:
+  name: ansible-playbooks
+  namespace: tekton-ci
+spec:
+  url: http://gitea.127.0.0.1.nip.io:8080/cnie-c0-infra/ansible-playbooks #TBR
+  git_provider:
+    type: gitea
+    url: http://gitea-http.gitea.svc.cluster.local:3000 #TBR
+    secret:
+      name: gitea-pac-token
+      key: token
+    webhook_secret:
+      name: gitea-pac-webhook
+      key: webhook-secret
