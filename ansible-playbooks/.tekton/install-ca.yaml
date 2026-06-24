@@ -16,7 +16,7 @@ spec:
       - name: repo
         value: tekton-pac-pipelines
       - name: pathInRepo
-        value: pipelines/install-ca.yaml
+        value: pipelines/run-ansible-playbook.yaml
   params:
     - name: gitea-org
       value: "{{ repo_owner }}"
@@ -24,6 +24,8 @@ spec:
       value: "{{ repo_name }}"
     - name: revision
       value: "{{ revision }}"
+    - name: playbook
+      value: install-ca.yml
     - name: inventory
       value: inventory/minikube.ini #minikube test target; switch to inventory/hosts.ini for prod.
   workspaces:

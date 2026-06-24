@@ -10,7 +10,9 @@ helm repo add gitea-charts https://dl.gitea.com/charts/
 helm repo add harbor      https://helm.goharbor.io
 helm repo add argo        https://argoproj.github.io/argo-helm
 helm repo add apisix      https://charts.apiseven.com
-helm repo update
+# Update only the repos this script uses, so unrelated stale repos in the
+# local Helm config (e.g. a removed sealed-secrets) can't abort setup.
+helm repo update gitea-charts harbor argo apisix
 
 echo "==> 3. Instalando APISIX..."
 kubectl create namespace apisix 2>/dev/null || true
@@ -54,6 +56,16 @@ kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
   -d '{"project_name":"cnie-c0-infra","public":false}' \
   "http://localhost:8080/api/v2.0/projects" || true
 
+# Public project for mirrored upstream images (see tekton-cicd-tools
+# harbor-public-images.yaml). Public so pulls need no credentials.
+kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
+  -w "  Crear proyecto Harbor 'c0-public':     HTTP %{http_code}\n" \
+  -X POST \
+  -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"project_name":"c0-public","public":true}' \
+  "http://localhost:8080/api/v2.0/projects" || true
+
 echo "==> 6. Instalando ArgoCD..."
 kubectl create namespace argocd 2>/dev/null || true
 helm upgrade --install argocd argo/argo-cd -n argocd \
@@ -69,7 +81,7 @@ kubectl create secret generic gitea-repo-creds \
 | kubectl label --local -f - argocd.argoproj.io/secret-type=repo-creds -o yaml \
 | kubectl apply -f -
 
-echo "==> 7. Publicando repos en Gitea (cnie-c0-infra/{infra,tekton-pac-pipelines,ci-utils} + cnie-c0-apps/app)..."
+echo "==> 7. Publicando repos en Gitea (cnie-c0-infra/{infra,tekton-pac-pipelines,tekton-cicd-tools} + cnie-c0-apps/app)..."
 kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
 PF_PID=$!
 sleep 3
@@ -98,9 +110,9 @@ curl -s -o /dev/null -w "  Crear repo tekton-pac-pipelines: HTTP %{http_code}\n"
   -d '{"name":"tekton-pac-pipelines","private":true,"auto_init":false}' \
   "http://localhost:3000/api/v1/orgs/cnie-c0-infra/repos" || true
 
-curl -s -o /dev/null -w "  Crear repo ci-utils: HTTP %{http_code}\n" \
+curl -s -o /dev/null -w "  Crear repo tekton-cicd-tools: HTTP %{http_code}\n" \
   -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/json" \
-  -d '{"name":"ci-utils","private":true,"auto_init":false}' \
+  -d '{"name":"tekton-cicd-tools","private":true,"auto_init":false}' \
   "http://localhost:3000/api/v1/orgs/cnie-c0-infra/repos" || true
 
 curl -s -o /dev/null -w "  Crear repo ansible-playbooks: HTTP %{http_code}\n" \
@@ -138,26 +150,26 @@ git -C "${PIPELINES_TMP}" remote add gitea http://admin:admin123@localhost:3000/
 git -C "${PIPELINES_TMP}" push gitea HEAD:main --force
 rm -rf "${PIPELINES_TMP}"
 
-# Push ci-utils/ → repo ci-utils
-CIUTILS_TMP=$(mktemp -d)
-cp -r /workspaces/minikube/ci-utils/. "${CIUTILS_TMP}/"
-git -C "${CIUTILS_TMP}" init
-git -C "${CIUTILS_TMP}" config user.email "setup@local"
-git -C "${CIUTILS_TMP}" config user.name "Setup"
-git -C "${CIUTILS_TMP}" add -A
-git -C "${CIUTILS_TMP}" commit -m "ci-utils snapshot"
-git -C "${CIUTILS_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/ci-utils.git
-git -C "${CIUTILS_TMP}" push gitea HEAD:main --force
-rm -rf "${CIUTILS_TMP}"
+# Push tekton-cicd-tools/ → repo tekton-cicd-tools
+TEKTON_TOOLS_TMP=$(mktemp -d)
+cp -r /workspaces/minikube/tekton-cicd-tools/. "${TEKTON_TOOLS_TMP}/"
+git -C "${TEKTON_TOOLS_TMP}" init
+git -C "${TEKTON_TOOLS_TMP}" config user.email "setup@local"
+git -C "${TEKTON_TOOLS_TMP}" config user.name "Setup"
+git -C "${TEKTON_TOOLS_TMP}" add -A
+git -C "${TEKTON_TOOLS_TMP}" commit -m "tekton-cicd-tools snapshot"
+git -C "${TEKTON_TOOLS_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/tekton-cicd-tools.git
+git -C "${TEKTON_TOOLS_TMP}" push gitea HEAD:main --force
+rm -rf "${TEKTON_TOOLS_TMP}"
 
-# Push ansible/ → repo ansible-playbooks
+# Push ansible-playbooks/ → repo ansible-playbooks
 ANSIBLE_TMP=$(mktemp -d)
-cp -r /workspaces/minikube/ansible/. "${ANSIBLE_TMP}/"
+cp -r /workspaces/minikube/ansible-playbooks/. "${ANSIBLE_TMP}/"
 git -C "${ANSIBLE_TMP}" init
 git -C "${ANSIBLE_TMP}" config user.email "setup@local"
 git -C "${ANSIBLE_TMP}" config user.name "Setup"
 git -C "${ANSIBLE_TMP}" add -A
-git -C "${ANSIBLE_TMP}" commit -m "ansible snapshot"
+git -C "${ANSIBLE_TMP}" commit -m "ansible-playbooks snapshot"
 git -C "${ANSIBLE_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/ansible-playbooks.git
 git -C "${ANSIBLE_TMP}" push gitea HEAD:main --force
 rm -rf "${ANSIBLE_TMP}"
@@ -326,17 +338,17 @@ kubectl create secret generic harbor-creds \
   --from-literal=password=Harbor12345 \
   -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
 
-echo "==> 13. Disparando los primeros builds (re-push de ci-utils y app)..."
+echo "==> 13. Disparando los primeros builds (re-push de tekton-cicd-tools y app)..."
 kubectl wait --for=condition=established --timeout=60s \
   crd/repositories.pipelinesascode.tekton.dev 2>/dev/null || true
 for i in $(seq 1 12); do
-  kubectl get repository ci-utils -n tekton-ci >/dev/null 2>&1 \
+  kubectl get repository tekton-cicd-tools -n tekton-ci >/dev/null 2>&1 \
     && kubectl get repository app -n tekton-ci >/dev/null 2>&1 \
     && break
   sleep 5
 done
-# ci-utils primero: la Task cleanup-images depende de su imagen en Harbor.
-bash /workspaces/minikube/scripts/sync-ci-utils.sh
+# tekton-cicd-tools primero: la Task cleanup-images depende de su imagen en Harbor.
+bash /workspaces/minikube/scripts/sync-tekton-cicd-tools.sh
 bash /workspaces/minikube/scripts/sync-app.sh
 
 echo ""

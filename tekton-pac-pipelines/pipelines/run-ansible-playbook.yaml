@@ -1,12 +1,10 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: install-ca
+  name: run-ansible-playbook
 spec:
   description: >
-    Clones the ansible-playbooks repo and runs install-ca.yml to (re)install the
-    internal CA into the trust store of every Kubernetes node in the inventory.
-    Triggered when the CA under files/ changes.
+    Clones a repo of Ansible playbooks and runs the requested playbook. The SSH key reaches the nodes via the ssh-key workspace.
   params:
     - name: gitea-org
       type: string
@@ -24,7 +22,6 @@ spec:
     - name: playbook
       type: string
       description: Playbook path, relative to the repo root
-      default: install-ca.yml
     - name: inventory
       type: string
       description: Inventory path, relative to the repo root

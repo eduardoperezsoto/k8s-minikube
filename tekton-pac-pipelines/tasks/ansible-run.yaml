@@ -22,7 +22,7 @@ spec:
     - name: ssh-key
       description: Secret-backed workspace holding the SSH private key (key id_rsa)
   steps:
-    - name: ansible-playbook
+    - name: run
       image: alpine/ansible:2.21.0
       env:
         # Ephemeral pod has no known_hosts; the minikube inventory also sets this.

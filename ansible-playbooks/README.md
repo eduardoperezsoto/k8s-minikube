@@ -97,7 +97,7 @@ pipeline `install-ca`, que clona este repo y ejecuta el playbook. Las piezas:
 | Trigger PaC (al cambiar `files/**`, `install-ca.yml`) | `.tekton/install-ca.yaml` |
 | Pipeline (`git-clone` → `ansible-run`) | repo `tekton-pac-pipelines`: `pipelines/install-ca.yaml` |
 | Task que ejecuta el playbook | repo `tekton-pac-pipelines`: `tasks/ansible-run.yaml` |
-| Registro del repo en PaC + ServiceAccount | repo `infra`: `tekton-pac/repositories/ansible-playbooks.yaml`, `tekton-pac/pipeline-serviceaccounts.yaml` (`ansible-run-sa`) |
+| Registro del repo en PaC + ServiceAccount | repo `infra`: `tekton-pac-deployments/repositories/ansible-playbooks.yaml`, `tekton-pac-deployments/pipeline-serviceaccounts.yaml` (`ansible-run-sa`) |
 
 El `Task` usa una imagen **pública pineada** de Ansible (`alpine/ansible`), igual
 que el resto de tasks (`alpine/git`, `skopeo`…). La clave SSH se inyecta como
@@ -127,8 +127,8 @@ minikube ssh -- 'ls -l /usr/local/share/ca-certificates/cnie-ca.crt'
 # Secret con la clave SSH del nodo (test: plano; prod: SealedSecret).
 kubectl create secret generic ansible-node-ssh -n tekton-ci \
   --from-file=id_rsa=$HOME/.minikube/machines/minikube/id_rsa
-make sync-infra && make sync-pipelines && make sync-ansible
-# rotación: edita files/cnie-ca.crt y 'make sync-ansible' → nuevo PipelineRun
+make sync-infra && make sync-pipelines && make sync-ansible-playbooks
+# rotación: edita files/cnie-ca.crt y 'make sync-ansible-playbooks' → nuevo PipelineRun
 kubectl get pipelineruns -n tekton-ci --sort-by=.metadata.creationTimestamp | tail
 ```
 
@@ -139,6 +139,6 @@ kubectl get pipelineruns -n tekton-ci --sort-by=.metadata.creationTimestamp | ta
 - Sustituir el `Secret` plano por un **SealedSecret** con la clave SSH real del
   usuario `ansible`.
 - Opcional pero recomendado en entorno interno: **mirrorizar** `alpine/ansible`
-  a Harbor (añadirla a `ci-utils/harbor-public-images.yaml`, pipeline
+  a Harbor (añadirla a `tekton-cicd-tools/harbor-public-images.yaml`, pipeline
   `mirror-images`) y apuntar el `image:` de `tasks/ansible-run.yaml` a Harbor,
   para no depender de registries públicos en cada ejecución.

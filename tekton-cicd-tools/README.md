@@ -1,4 +1,4 @@
-# ci-utils
+# tekton-cicd-tools
 
 Single image with Python utilities used by the CI Tasks. One image, multiple
 scripts; each Task picks which script to run by passing it in `args`.
@@ -19,7 +19,7 @@ scripts/
 ```yaml
 steps:
   - name: cleanup
-    image: harbor.harbor.svc.cluster.local:80/cnie-c0-infra/ci-utils:latest
+    image: harbor.harbor.svc.cluster.local:80/cnie-c0-infra/tekton-cicd-tools:latest
     args: ["/app/scripts/cleanup_images.py"]
     env:
       - name: ARGOCD_URL

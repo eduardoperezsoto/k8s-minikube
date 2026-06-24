@@ -1,14 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tekton-ci
+  name: tekton-pac-deployments
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: http://gitea-http.gitea.svc.cluster.local:3000/cnie-c0-infra/infra.git #TBR
     targetRevision: main
-    path: tekton
+    path: tekton-pac-deployments
   destination:
     server: https://kubernetes.default.svc
     namespace: tekton-ci
@@ -17,5 +17,10 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
       - ServerSideApply=true
+  ignoreDifferences:
+    - group: pipelinesascode.tekton.dev
+      kind: Repository
+      jsonPointers:
+        - /status
+        - /pipelinerun_status

@@ -15,7 +15,7 @@ spec:
       default: "false"
   steps:
     - name: cleanup
-      image: harbor.harbor.svc.cluster.local:80/cnie-c0-infra/ci-utils:latest #TBR
+      image: harbor.harbor.svc.cluster.local:80/cnie-c0-infra/tekton-cicd-tools:latest #TBR
       command: ["sh", "-c"]
       args:
         - |

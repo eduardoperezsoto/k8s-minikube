@@ -8,7 +8,7 @@ resources:
   - cleanup/cleanup-images-cronjob.yaml
   - cleanup/pipelinerun-pruner-cronjob.yaml
   - repositories/app.yaml
-  - repositories/ci-utils.yaml
+  - repositories/tekton-cicd-tools.yaml
   - repositories/ansible-playbooks.yaml
 
 configMapGenerator:

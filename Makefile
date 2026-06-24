@@ -1,4 +1,4 @@
-.PHONY: help setup sync-infra sync-pipelines sync-ci-utils sync-app sync-ansible sync proxy status pipelines cleanup argocd-pass
+.PHONY: help setup sync-infra sync-pipelines sync-tekton-cicd-tools sync-app sync-ansible-playbooks sync proxy status pipelines cleanup argocd-pass
 
 SHELL := /bin/bash
 
@@ -7,10 +7,10 @@ help:
 	@echo "  setup           Destruye y recrea el cluster completo"
 	@echo "  sync-infra      Push infra/ al repo infra de Gitea"
 	@echo "  sync-pipelines  Push tekton-pac-pipelines/ al repo tekton-pac-pipelines de Gitea"
-	@echo "  sync-ci-utils   Push ci-utils/ al repo ci-utils de Gitea (dispara build de imagen)"
+	@echo "  sync-tekton-cicd-tools   Push tekton-cicd-tools/ al repo tekton-cicd-tools de Gitea (dispara build de imagen)"
 	@echo "  sync-app        Push app/ al repo app de Gitea"
-	@echo "  sync-ansible    Push ansible/ al repo ansible-playbooks de Gitea (dispara install-ca al cambiar la CA)"
-	@echo "  sync            Push infra, pipelines, ci-utils, app y ansible"
+	@echo "  sync-ansible-playbooks   Push ansible-playbooks/ al repo ansible-playbooks de Gitea (dispara install-ca al cambiar la CA)"
+	@echo "  sync            Push infra, pipelines, tekton-cicd-tools, app y ansible-playbooks"
 	@echo "  proxy           Expone el gateway APISIX en localhost:8080"
 	@echo "  status          Estado de pods en todos los namespaces relevantes"
 	@echo "  pipelines       Últimos 10 PipelineRuns"
@@ -26,16 +26,16 @@ sync-infra:
 sync-pipelines:
 	bash scripts/sync-pipelines.sh
 
-sync-ci-utils:
-	bash scripts/sync-ci-utils.sh
+sync-tekton-cicd-tools:
+	bash scripts/sync-tekton-cicd-tools.sh
 
 sync-app:
 	bash scripts/sync-app.sh
 
-sync-ansible:
-	bash scripts/sync-ansible.sh
+sync-ansible-playbooks:
+	bash scripts/sync-ansible-playbooks.sh
 
-sync: sync-infra sync-pipelines sync-ci-utils sync-app sync-ansible
+sync: sync-infra sync-pipelines sync-tekton-cicd-tools sync-app sync-ansible-playbooks
 
 proxy:
 	@echo "Accesos disponibles en http://*.127.0.0.1.nip.io:8080"
@@ -61,4 +61,4 @@ argocd-pass:
 	  -o jsonpath='{.data.password}' | base64 -d && echo
 
 cleanup:
-	kubectl create -f infra/tekton-pac/cleanup/cleanup-images-pipelinerun.yaml
+	kubectl create -f infra/tekton-pac-deployments/cleanup/cleanup-images-pipelinerun.yaml
