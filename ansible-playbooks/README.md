@@ -125,11 +125,11 @@ minikube ssh -- 'ls -l /usr/local/share/ca-certificates/cnie-ca.crt'
 
 ```bash
 # Secret con la clave SSH del nodo (test: plano; prod: SealedSecret).
-kubectl create secret generic ansible-node-ssh -n tekton-ci \
+kubectl create secret generic ansible-node-ssh -n cnie-pipelines-as-code \
   --from-file=id_rsa=$HOME/.minikube/machines/minikube/id_rsa
 make sync-infra && make sync-pipelines && make sync-ansible-playbooks
 # rotación: edita files/cnie-ca.crt y 'make sync-ansible-playbooks' → nuevo PipelineRun
-kubectl get pipelineruns -n tekton-ci --sort-by=.metadata.creationTimestamp | tail
+kubectl get pipelineruns -n cnie-pipelines-as-code --sort-by=.metadata.creationTimestamp | tail
 ```
 
 ### Migrar a prod

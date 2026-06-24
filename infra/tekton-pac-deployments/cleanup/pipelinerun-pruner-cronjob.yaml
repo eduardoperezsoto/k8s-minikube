@@ -2,13 +2,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: pipelinerun-pruner-sa
-  namespace: tekton-ci
+  namespace: cnie-pipelines-as-code
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: pipelinerun-pruner-role
-  namespace: tekton-ci
+  namespace: cnie-pipelines-as-code
 rules:
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns"]
@@ -18,11 +18,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: pipelinerun-pruner-binding
-  namespace: tekton-ci
+  namespace: cnie-pipelines-as-code
 subjects:
   - kind: ServiceAccount
     name: pipelinerun-pruner-sa
-    namespace: tekton-ci
+    namespace: cnie-pipelines-as-code
 roleRef:
   kind: Role
   name: pipelinerun-pruner-role
@@ -32,7 +32,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: pipelinerun-pruner
-  namespace: tekton-ci
+  namespace: cnie-pipelines-as-code
 spec:
   schedule: "0 3 * * *"
   timeZone: "Europe/Madrid"
@@ -64,13 +64,13 @@ spec:
                   set -e
                   CUTOFF=$(date -u -d '7 days ago' +%s)
                   echo "Pruning PipelineRuns completed before $(date -u -d @${CUTOFF} -Iseconds)"
-                  kubectl get pipelineruns -n tekton-ci \
+                  kubectl get pipelineruns -n cnie-pipelines-as-code \
                     -o jsonpath='{range .items[?(@.status.completionTime)]}{.metadata.name}{"\t"}{.status.completionTime}{"\n"}{end}' \
                     | while IFS=$'\t' read -r NAME COMPLETED; do
                         TS=$(date -u -d "${COMPLETED}" +%s 2>/dev/null || echo 0)
                         if [ "${TS}" -lt "${CUTOFF}" ] && [ "${TS}" -gt 0 ]; then
                           echo "Deleting ${NAME} (completed ${COMPLETED})"
-                          kubectl delete pipelinerun -n tekton-ci "${NAME}" --wait=false
+                          kubectl delete pipelinerun -n cnie-pipelines-as-code "${NAME}" --wait=false
                         fi
                       done
                   echo "Done."

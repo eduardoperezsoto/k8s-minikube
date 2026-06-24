@@ -40,20 +40,22 @@ kubectl create secret docker-registry harbor-pull-secret \
   -n default --dry-run=client -o yaml | kubectl apply -f -
 
 # Crear proyectos Harbor
+# Harbor projects use the org name without the cnie- prefix, matching prod
+# (resolve-harbor-project strips it: cnie-c0-apps → c0-apps).
 kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
-  -w "  Crear proyecto Harbor 'cnie-c0-apps':  HTTP %{http_code}\n" \
+  -w "  Crear proyecto Harbor 'c0-apps':  HTTP %{http_code}\n" \
   -X POST \
   -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
   -H "Content-Type: application/json" \
-  -d '{"project_name":"cnie-c0-apps","public":false}' \
+  -d '{"project_name":"c0-apps","public":false}' \
   "http://localhost:8080/api/v2.0/projects" || true
 
 kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
-  -w "  Crear proyecto Harbor 'cnie-c0-infra': HTTP %{http_code}\n" \
+  -w "  Crear proyecto Harbor 'c0-infra': HTTP %{http_code}\n" \
   -X POST \
   -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
   -H "Content-Type: application/json" \
-  -d '{"project_name":"cnie-c0-infra","public":false}' \
+  -d '{"project_name":"c0-infra","public":false}' \
   "http://localhost:8080/api/v2.0/projects" || true
 
 # Public project for mirrored upstream images (see tekton-cicd-tools
@@ -226,7 +228,7 @@ HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
 minikube ssh -- "echo '${HARBOR_IP} harbor.harbor.svc.cluster.local' | sudo tee -a /etc/hosts"
 
 echo "==> 11. Configurando Pipelines as Code + webhook en Gitea..."
-kubectl create namespace ci 2>/dev/null || true
+kubectl create namespace cnie-pipelines-as-code 2>/dev/null || true
 
 WEBHOOK_SECRET=$(openssl rand -hex 32)
 
@@ -251,9 +253,12 @@ PAC_TOKEN=$(curl -s -X POST -H "${GITEA_AUTH}" -H "Content-Type: application/jso
   "http://localhost:3000/api/v1/users/admin/tokens" \
   | jq -r '.sha1')
 
-kubectl create secret generic gitea-pac-token \
-  --from-literal=token="${PAC_TOKEN}" \
-  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
+# Single PaC secret holding both the provider token (callbacks into Gitea) and
+# the webhook signing secret, matching prod (keys provider.token / webhook.secret).
+kubectl create secret generic pac-gitea-secret \
+  --from-literal=provider.token="${PAC_TOKEN}" \
+  --from-literal=webhook.secret="${WEBHOOK_SECRET}" \
+  -n cnie-pipelines-as-code --dry-run=client -o yaml | kubectl apply -f -
 
 # Token consumed by the Tekton git resolver to fetch Pipelines/Tasks from the
 # tekton-pac-pipelines repo via Gitea's SCM API. Read-only is enough.
@@ -274,14 +279,10 @@ kubectl create secret generic gitea-resolver-token \
   --from-literal=token="${RESOLVER_TOKEN}" \
   -n tekton-pipelines-resolvers --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl create secret generic gitea-pac-webhook \
-  --from-literal=webhook-secret="${WEBHOOK_SECRET}" \
-  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
-
 # Register org-level webhook → in-cluster PaC controller. One hook per org
 # fires for every repo in that org; PaC ignores events from repos without a
 # matching Repository CR. Gitea signs the payload with the shared secret;
-# PaC verifies it using the gitea-pac-webhook Secret.
+# PaC verifies it using the pac-gitea-secret Secret.
 register_pac_org_webhook() {
   local org="$1"
   for HOOK_ID in $(curl -s -H "${GITEA_AUTH}" \
@@ -313,7 +314,7 @@ echo "==> 12. Configurando secrets de CI..."
 kubectl create secret generic gitea-creds \
   --from-literal=username=admin \
   --from-literal=password=admin123 \
-  -n tekton-ci --dry-run=client -o yaml \
+  -n cnie-pipelines-as-code --dry-run=client -o yaml \
 | sed '/^kind: Secret$/a type: kubernetes.io/basic-auth' \
 | kubectl annotate --local -f - tekton.dev/git-0=http://gitea-http.gitea.svc.cluster.local:3000 -o yaml \
 | kubectl apply -f -
@@ -322,13 +323,13 @@ kubectl create secret generic argocd-creds \
   --from-literal=url=http://argocd-server.argocd.svc.cluster.local \
   --from-literal=username=admin \
   --from-literal=password="${ARGOCD_PASS}" \
-  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
+  -n cnie-pipelines-as-code --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret docker-registry harbor-dockerconfig \
   --docker-server=harbor.harbor.svc.cluster.local:80 \
   --docker-username=admin \
   --docker-password=Harbor12345 \
-  -n tekton-ci --dry-run=client -o yaml \
+  -n cnie-pipelines-as-code --dry-run=client -o yaml \
 | kubectl annotate --local -f - tekton.dev/docker-0=harbor.harbor.svc.cluster.local:80 -o yaml \
 | kubectl apply -f -
 
@@ -336,14 +337,14 @@ kubectl create secret generic harbor-creds \
   --from-literal=url=http://harbor.harbor.svc.cluster.local:80 \
   --from-literal=username=admin \
   --from-literal=password=Harbor12345 \
-  -n tekton-ci --dry-run=client -o yaml | kubectl apply -f -
+  -n cnie-pipelines-as-code --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> 13. Disparando los primeros builds (re-push de tekton-cicd-tools y app)..."
 kubectl wait --for=condition=established --timeout=60s \
   crd/repositories.pipelinesascode.tekton.dev 2>/dev/null || true
 for i in $(seq 1 12); do
-  kubectl get repository tekton-cicd-tools -n tekton-ci >/dev/null 2>&1 \
-    && kubectl get repository app -n tekton-ci >/dev/null 2>&1 \
+  kubectl get repository tekton-cicd-tools -n cnie-pipelines-as-code >/dev/null 2>&1 \
+    && kubectl get repository app -n cnie-pipelines-as-code >/dev/null 2>&1 \
     && break
   sleep 5
 done

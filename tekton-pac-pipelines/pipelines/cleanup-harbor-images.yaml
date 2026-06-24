@@ -21,7 +21,7 @@ spec:
           - name: repo
             value: tekton-pac-pipelines
           - name: pathInRepo
-            value: tasks/cleanup-images.yaml
+            value: tasks/cleanup-harbor-images.yaml
       params:
         - name: dry-run
           value: $(params.dry-run)

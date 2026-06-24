@@ -7,12 +7,12 @@ Asumimos que en prod ya están instalados ArgoCD, cert-manager, sealed-secrets, 
 Copiar tal cual al repo de prod:
 
 - [pipelines/build-scan-push.yaml](tekton-pac-pipelines/pipelines/build-scan-push.yaml)
-- [pipelines/cleanup-images.yaml](tekton-pac-pipelines/pipelines/cleanup-images.yaml)
+- [pipelines/cleanup-harbor-images.yaml](tekton-pac-pipelines/pipelines/cleanup-harbor-images.yaml)
 - [tasks/git-clone.yaml](tekton-pac-pipelines/tasks/git-clone.yaml)
 - [tasks/kaniko-build.yaml](tekton-pac-pipelines/tasks/kaniko-build.yaml)
 - [tasks/trivy-scan.yaml](tekton-pac-pipelines/tasks/trivy-scan.yaml)
 - [tasks/skopeo-push.yaml](tekton-pac-pipelines/tasks/skopeo-push.yaml)
-- [tasks/cleanup-images.yaml](tekton-pac-pipelines/tasks/cleanup-images.yaml)
+- [tasks/cleanup-harbor-images.yaml](tekton-pac-pipelines/tasks/cleanup-harbor-images.yaml)
 
 Recomendación: taggear el repo (`v1.0.0`) para que los consumidores puedan pinear `revision`. Hoy todos resuelven `main` por `default-revision`.
 
@@ -22,13 +22,13 @@ Recomendación: taggear el repo (`v1.0.0`) para que los consumidores puedan pine
 |---|---|
 | [git-resolver-config.yaml](infra/tekton-deployments/git-resolver-config.yaml) | Config del git resolver: `default-org`, `server-url` de Gitea, secret del token |
 | [tekton-pac-deployments/repositories/app.yaml](infra/tekton-pac-deployments/repositories/app.yaml) | Registra cada repo de app ante PAC (uno por app) |
-| [rbac.yaml](infra/tekton-deployments/rbac.yaml) | Dos SAs por función: **`build-push-sa`** (build) con `secrets: [gitea-creds, harbor-creds]` — Tekton auto-inyecta `.git-credentials` + `~/.docker/config.json`; PAC lo inyecta como SA por defecto via `default-pipelinerun-service-account` en su ConfigMap. **`cleanup-images-sa`** (maintenance) con `imagePullSecret: harbor-creds` para tirar la imagen `tekton-cicd-tools`; referenciado explícito en su PipelineRun. + Role para que el Dashboard pueda relanzar/borrar PipelineRuns |
+| [rbac.yaml](infra/tekton-deployments/rbac.yaml) | Dos SAs por función: **`build-push-sa`** (build) con `secrets: [gitea-creds, harbor-creds]` — Tekton auto-inyecta `.git-credentials` + `~/.docker/config.json`; PAC lo inyecta como SA por defecto via `default-pipelinerun-service-account` en su ConfigMap. **`cleanup-harbor-images-sa`** (maintenance) con `imagePullSecret: harbor-creds` para tirar la imagen `tekton-cicd-tools`; referenciado explícito en su PipelineRun. + Role para que el Dashboard pueda relanzar/borrar PipelineRuns |
 | [cleanup/cleanup-images-cronjob.yaml](infra/tekton-deployments/cleanup/cleanup-images-cronjob.yaml) | CronJob diario que crea un PipelineRun de `cleanup-images` |
 | [cleanup/cleanup-images-pipelinerun.yaml](infra/tekton-deployments/cleanup/cleanup-images-pipelinerun.yaml) | Plantilla del PipelineRun que lanza el CronJob (vía ConfigMap) |
 | [cleanup/cleanup-images.py](infra/tekton-deployments/cleanup/cleanup-images.py) | Script de retención usado por la task `cleanup-images` (vía ConfigMap) |
 | [cleanup/pipelinerun-pruner-cronjob.yaml](infra/tekton-deployments/cleanup/pipelinerun-pruner-cronjob.yaml) | CronJob que borra PipelineRuns completados de más de 7 días |
-| [namespace.yaml](infra/tekton-deployments/namespace.yaml) | Namespace `tekton-ci` (si no existe ya) |
-| [kustomization.yaml](infra/tekton-deployments/kustomization.yaml) | Genera los ConfigMap `cleanup-script` y `cleanup-pipelinerun-manifest` en `tekton-ci` — sin esto el cleanup no funciona |
+| [namespace.yaml](infra/tekton-deployments/namespace.yaml) | Namespace `cnie-pipelines-as-code` (si no existe ya) |
+| [kustomization.yaml](infra/tekton-deployments/kustomization.yaml) | Genera los ConfigMap `cleanup-script` y `cleanup-pipelinerun-manifest` en `cnie-pipelines-as-code` — sin esto el cleanup no funciona |
 
 ## 3. Cambios en los YAML antes de subir (los `#TBR`)
 
@@ -55,12 +55,11 @@ Hoy estos secretos están hechos a mano. En prod tienen que vivir en git ya sell
 | Secret | Namespace | Claves | Lo consume |
 |---|---|---|---|
 | `gitea-resolver-token` | `tekton-pipelines-resolvers` | `token` | git resolver — [git-resolver-config.yaml:17-19](infra/tekton-deployments/git-resolver-config.yaml#L17-L19) |
-| `gitea-pac-token` | `tekton-ci` | `token` | PAC — [app.yaml:12](infra/tekton-pac-deployments/repositories/app.yaml#L12) |
-| `gitea-pac-webhook` | `tekton-ci` | `webhook-secret` | PAC valida firma — [app.yaml:15](infra/tekton-pac-deployments/repositories/app.yaml#L15) |
-| `gitea-creds` | `tekton-ci` | `username`, `password` (tipo `kubernetes.io/basic-auth`, anotación `tekton.dev/git-0=<url-gitea>`) | git-clone — Tekton inyecta auto via SA [rbac.yaml](infra/tekton-deployments/rbac.yaml) |
-| `harbor-dockerconfig` | `tekton-ci` | `.dockerconfigjson` (tipo `kubernetes.io/dockerconfigjson`, anotación `tekton.dev/docker-0=<harbor-url>`) | `imagePullSecret` del SA + Tekton inyecta `~/.docker/config.json` auto en skopeo push |
-| `harbor-creds` | `tekton-ci` | `url`, `username`, `password` (tipo `Opaque`) | cleanup API via secretKeyRef ([cleanup-images.yaml:37-51](tekton-pac-pipelines/tasks/cleanup-images.yaml#L37-L51)) |
-| `argocd-creds` | `tekton-ci` | `url`, `username`, `password` | cleanup — [cleanup-images.yaml:22-36](tekton-pac-pipelines/tasks/cleanup-images.yaml#L22-L36) |
+| `pac-gitea-secret` | `cnie-pipelines-as-code` | `provider.token` (callback a Gitea), `webhook.secret` (PAC valida firma) | PAC — [app.yaml:11-16](infra/tekton-pac-deployments/repositories/app.yaml#L11-L16) |
+| `gitea-creds` | `cnie-pipelines-as-code` | `username`, `password` (tipo `kubernetes.io/basic-auth`, anotación `tekton.dev/git-0=<url-gitea>`) | git-clone — Tekton inyecta auto via SA [rbac.yaml](infra/tekton-deployments/rbac.yaml) |
+| `harbor-dockerconfig` | `cnie-pipelines-as-code` | `.dockerconfigjson` (tipo `kubernetes.io/dockerconfigjson`, anotación `tekton.dev/docker-0=<harbor-url>`) | `imagePullSecret` del SA + Tekton inyecta `~/.docker/config.json` auto en skopeo push |
+| `harbor-creds` | `cnie-pipelines-as-code` | `url`, `username`, `password` (tipo `Opaque`) | cleanup API via secretKeyRef ([cleanup-harbor-images.yaml:37-51](tekton-pac-pipelines/tasks/cleanup-harbor-images.yaml#L37-L51)) |
+| `argocd-creds` | `cnie-pipelines-as-code` | `url`, `username`, `password` | cleanup — [cleanup-harbor-images.yaml:22-36](tekton-pac-pipelines/tasks/cleanup-harbor-images.yaml#L22-L36) |
 
 Flujo por cada secret:
 
@@ -74,22 +73,22 @@ Flujo por cada secret:
 Por cada repo en `cnie-c0-apps` registrar el webhook en Gitea apuntando al controller de PAC:
 
 - **URL**: la del Service/Ingress del controller PAC en prod.
-- **Secret**: mismo valor que `gitea-pac-webhook`.
+- **Secret**: mismo valor que la clave `webhook.secret` de `pac-gitea-secret`.
 - **Eventos**: push + pull request.
 
 ## 7. Por cada app que entre al CI
 
 1. En `cnie-c0-apps/<app>` añadir `.tekton/build-scan-push.yaml` — copia de [app/.tekton/build-scan-push.yaml](app/.tekton/build-scan-push.yaml) con el `storageClassName` ajustado.
 2. En `infra` añadir un PAC `Repository` por app (clon de [tekton-pac-deployments/repositories/app.yaml](infra/tekton-pac-deployments/repositories/app.yaml) con `name` y `spec.url` reales) y añadirlo al `kustomization.yaml`.
-3. En Harbor crear el proyecto con nombre igual a la org (`cnie-c0-apps`), porque el pipeline mapea `repo-owner` → proyecto Harbor — [build-scan-push.yaml:14](tekton-pac-pipelines/pipelines/build-scan-push.yaml#L14).
+3. En Harbor crear el proyecto: el pipeline deriva su nombre del `gitea-org` quitando el prefijo `cnie-` vía la task `resolve-harbor-project` (`cnie-c0-apps` → `c0-apps`). Si quieres otro nombre, pásalo explícito en el param `harbor-project` — [build-scan-push.yaml](tekton-pac-pipelines/pipelines/build-scan-push.yaml).
 4. Registrar el webhook (sección 6).
 
 ## 8. Orden de aplicación
 
 1. Push del contenido al repo `tekton-pac-pipelines` (con flags TLS ajustados si aplica).
-2. Commit de los 6 SealedSecrets en `infra`.
+2. Commit de los SealedSecrets en `infra`.
 3. Commit del subárbol de Tekton en `infra` (sección 2, con los `#TBR` resueltos).
-4. ArgoCD sincroniza → namespace `tekton-ci` queda listo.
+4. ArgoCD sincroniza → namespace `cnie-pipelines-as-code` queda listo.
 5. Registrar webhook en Gitea por cada repo de app.
 6. Push en una app → debería dispararse el PipelineRun.
 
@@ -98,7 +97,7 @@ Por cada repo en `cnie-c0-apps` registrar el webhook en Gitea apuntando al contr
 - [ ] `spec.url` del PAC `Repository` apunta a la URL externa real, no a `nip.io`.
 - [ ] `storageClassName` del workspace `source` válido en prod.
 - [ ] Flags TLS en `skopeo-push.yaml` y `cleanup-images.py` ajustados a la realidad de prod.
-- [ ] Los 6 SealedSecrets aplicados **antes** de que Argo sincronice el SA `default` (si no, se queda con `imagePullSecret` colgando).
+- [ ] Los SealedSecrets aplicados **antes** de que Argo sincronice el SA `default` (si no, se queda con `imagePullSecret` colgando).
 - [ ] Tag `v1.0.0` en `tekton-pac-pipelines` (opcional, para pinear `revision` en consumidores).
-- [ ] Proyecto en Harbor con nombre igual a la org (`cnie-c0-apps`).
+- [ ] Proyecto en Harbor con el nombre derivado (`cnie-c0-apps` → `c0-apps`), o `harbor-project` explícito.
 - [ ] El tag `:latest` extra que pone [skopeo-push.yaml:44-49](tekton-pac-pipelines/tasks/skopeo-push.yaml#L44-L49) es aceptable en prod (el cleanup ya lo excluye en [cleanup-images.py:135](infra/tekton-deployments/cleanup/cleanup-images.py#L135)).

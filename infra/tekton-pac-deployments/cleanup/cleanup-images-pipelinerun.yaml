@@ -2,14 +2,14 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   generateName: cleanup-images-
-  namespace: tekton-ci
+  namespace: cnie-pipelines-as-code
 spec:
   taskRunTemplate:
-    serviceAccountName: cleanup-images-sa
+    serviceAccountName: cleanup-harbor-images-sa
   pipelineRef:
     resolver: git
     params:
       - name: repo
         value: tekton-pac-pipelines
       - name: pathInRepo
-        value: pipelines/cleanup-images.yaml
+        value: pipelines/cleanup-harbor-images.yaml

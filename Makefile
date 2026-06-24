@@ -42,8 +42,8 @@ proxy:
 	kubectl port-forward -n apisix svc/apisix-gateway 8080:80
 
 status:
-	@echo "=== tekton-ci ==="
-	@kubectl get pods -n tekton-ci 2>/dev/null || true
+	@echo "=== cnie-pipelines-as-code ==="
+	@kubectl get pods -n cnie-pipelines-as-code 2>/dev/null || true
 	@echo "=== gitea ==="
 	@kubectl get pods -n gitea 2>/dev/null || true
 	@echo "=== harbor ==="
@@ -54,7 +54,7 @@ status:
 	@kubectl get pods -n tekton-pipelines 2>/dev/null || true
 
 pipelines:
-	kubectl get pipelineruns -n tekton-ci --sort-by=.metadata.creationTimestamp | tail -10
+	kubectl get pipelineruns -n cnie-pipelines-as-code --sort-by=.metadata.creationTimestamp | tail -10
 
 argocd-pass:
 	@kubectl -n argocd get secret argocd-initial-admin-secret \

@@ -11,7 +11,7 @@ spec:
     path: tekton-pac-deployments
   destination:
     server: https://kubernetes.default.svc
-    namespace: tekton-ci
+    namespace: cnie-pipelines-as-code
   syncPolicy:
     automated:
       prune: true

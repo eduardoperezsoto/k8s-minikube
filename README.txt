@@ -25,7 +25,7 @@ Access via browser:
 
 3. Configure Harbor
   a. Log in to Harbor at http://registry.127.0.0.1.nip.io:8080
-  b. Create a new project: Projects → New Project → Name: cnie-c0-apps → Access level: Private
+  b. Create a new project: Projects → New Project → Name: c0-apps → Access level: Private
 
 4. Configure Gitea
   a. Log in to Gitea at http://gitea.127.0.0.1.nip.io:8080
@@ -50,4 +50,4 @@ Access via browser:
 7. Cleanup CronJob
   - Runs daily at 02:00 UTC, keeps current + previous Harbor image per repo
   - Script: infra/tekton/cleanup/cleanup-images.py
-  - Tekton pipeline: tekton-pac-pipelines/pipelines/cleanup-images.yaml (not PaC-driven; triggered by CronJob)
+  - Tekton pipeline: tekton-pac-pipelines/pipelines/cleanup-harbor-images.yaml (not PaC-driven; triggered by CronJob)

@@ -6,11 +6,15 @@ spec:
   description: >
     Builds the Docker image, scans it with Trivy, and pushes to Harbor only if
     no CRITICAL or HIGH vulnerabilities are found. Generic across projects:
-    referenced from each app repo's .tekton/push.yaml via git resolver.
+    referenced from each app repo's .tekton/build-scan-push.yaml via git resolver.
   params:
-    - name: repo-owner
+    - name: gitea-org
       type: string
-      description: Org/owner on Gitea and project on Harbor — must match (e.g. cnie-c0-apps)
+      description: Org/owner on Gitea (e.g. cnie-c0-apps)
+    - name: harbor-project
+      type: string
+      description: Project name on Harbor. If empty, resolved by resolve-harbor-project task as gitea-org without the cnie- prefix.
+      default: ""
     - name: repo-name
       type: string
       description: Repo name on Gitea and image name on Harbor — must match (e.g. app)
@@ -38,7 +42,22 @@ spec:
     - name: source
 
   tasks:
+    - name: resolve-harbor-project
+      taskRef:
+        resolver: git
+        params:
+          - name: repo
+            value: tekton-pac-pipelines
+          - name: pathInRepo
+            value: tasks/resolve-harbor-project.yaml
+      params:
+        - name: gitea-org
+          value: $(params.gitea-org)
+        - name: harbor-project
+          value: $(params.harbor-project)
+
     - name: git-clone
+      runAfter: [resolve-harbor-project]
       taskRef:
         resolver: git
         params:
@@ -48,7 +67,7 @@ spec:
             value: tasks/git-clone.yaml
       params:
         - name: url
-          value: "$(params.gitea-base)/$(params.repo-owner)/$(params.repo-name).git"
+          value: "$(params.gitea-base)/$(params.gitea-org)/$(params.repo-name).git"
         - name: revision
           value: $(params.revision)
       workspaces:
@@ -66,7 +85,7 @@ spec:
       runAfter: [git-clone]
       params:
         - name: image-name
-          value: "$(params.harbor-registry)/$(params.repo-owner)/$(params.repo-name)"
+          value: "$(params.harbor-registry)/$(tasks.resolve-harbor-project.results.value)/$(params.repo-name)"
         - name: tag
           value: $(params.revision)
         - name: dockerfile
@@ -88,7 +107,7 @@ spec:
       runAfter: [kaniko-build]
       params:
         - name: image
-          value: "$(params.harbor-registry)/$(params.repo-owner)/$(params.repo-name):$(params.revision)"
+          value: "$(params.harbor-registry)/$(tasks.resolve-harbor-project.results.value)/$(params.repo-name):$(params.revision)"
       workspaces:
         - name: source
           workspace: source
@@ -104,7 +123,7 @@ spec:
       runAfter: [trivy-scan]
       params:
         - name: image
-          value: "$(params.harbor-registry)/$(params.repo-owner)/$(params.repo-name)"
+          value: "$(params.harbor-registry)/$(tasks.resolve-harbor-project.results.value)/$(params.repo-name)"
         - name: tag
           value: $(params.revision)
       workspaces:

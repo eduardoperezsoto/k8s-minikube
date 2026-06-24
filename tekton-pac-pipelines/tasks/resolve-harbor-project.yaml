@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: resolve-harbor-project
+spec:
+  description: >
+    Computes the Harbor project name. If harbor-project is provided, uses it
+    as-is. Otherwise strips the cnie- prefix from gitea-org (e.g. `cnie-c0-infra` → `c0-infra`).
+  params:
+    - name: gitea-org
+      type: string
+    - name: harbor-project
+      type: string
+      default: ""
+  results:
+    - name: value
+      description: Resolved Harbor project name
+  steps:
+    - name: compute
+      image: alpine:3.24
+      script: |
+        #!/bin/sh
+        if [ -n "$(params.harbor-project)" ]; then
+          printf '%s' "$(params.harbor-project)"
+        else
+          printf '%s' "$(params.gitea-org)" | sed 's/^cnie-//'
+        fi | tee $(results.value.path)

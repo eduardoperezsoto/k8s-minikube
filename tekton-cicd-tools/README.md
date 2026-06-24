@@ -19,7 +19,7 @@ scripts/
 ```yaml
 steps:
   - name: cleanup
-    image: harbor.harbor.svc.cluster.local:80/cnie-c0-infra/tekton-cicd-tools:latest
+    image: harbor.harbor.svc.cluster.local:80/c0-infra/tekton-cicd-tools:latest
     args: ["/app/scripts/cleanup_images.py"]
     env:
       - name: ARGOCD_URL

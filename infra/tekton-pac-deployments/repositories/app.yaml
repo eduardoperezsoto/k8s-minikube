@@ -2,15 +2,15 @@ apiVersion: pipelinesascode.tekton.dev/v1alpha1
 kind: Repository
 metadata:
   name: app
-  namespace: tekton-ci
+  namespace: cnie-pipelines-as-code
 spec:
   url: http://gitea.127.0.0.1.nip.io:8080/cnie-c0-apps/app #TBR
   git_provider:
     type: gitea
     url: http://gitea-http.gitea.svc.cluster.local:3000 #TBR
     secret:
-      name: gitea-pac-token 
-      key: token
+      name: pac-gitea-secret
+      key: provider.token
     webhook_secret:
-      name: gitea-pac-webhook
-      key: webhook-secret
+      name: pac-gitea-secret
+      key: webhook.secret

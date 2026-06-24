@@ -13,7 +13,7 @@ resources:
 
 configMapGenerator:
   - name: cleanup-pipelinerun-manifest
-    namespace: tekton-ci
+    namespace: cnie-pipelines-as-code
     files:
       - pipelinerun.yaml=cleanup/cleanup-images-pipelinerun.yaml
     options:
