@@ -220,8 +220,10 @@ kubectl patch cm pipelines-as-code -n pipelines-as-code --type merge \
 kubectl rollout restart -n pipelines-as-code deployment/pipelines-as-code-controller
 kubectl rollout status -n pipelines-as-code deployment/pipelines-as-code-controller --timeout=60s
 
-echo "==> 9. Registrando ArgoCD Applications..."
-kubectl apply -f /workspaces/minikube/infra/argocd/apps/
+echo "==> 9. Registrando ArgoCD Applications (app-of-apps)..."
+# The root Application syncs everything under argocd/apps/ from the infra repo,
+# so registering apps is just a git commit from here on (no manual kubectl apply).
+kubectl apply -f /workspaces/minikube/infra/argocd/apps-root.yaml
 
 # Allow Harbor containers to push: the ClusterIP is within 10.96.0.0/12
 HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}')
