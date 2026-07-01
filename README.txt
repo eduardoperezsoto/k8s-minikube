@@ -18,9 +18,9 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 kubectl port-forward -n apisix svc/apisix-gateway 8080:80
 
 Access via browser:
-  Gitea:   http://gitea.127.0.0.1.nip.io:8080   user: admin  pass: admin123
-  Harbor:  http://registry.127.0.0.1.nip.io:8080 user: admin  pass: Harbor12345
-  ArgoCD:  http://argocd.127.0.0.1.nip.io:8080   user: admin  pass: (printed at end of setup script)
+  Gitea:   http://gitea.127.0.0.1.nip.io:8080   user: admin  pass: admin
+  Harbor:  http://registry.127.0.0.1.nip.io:8080 user: admin  pass: admin
+  ArgoCD:  http://argocd.127.0.0.1.nip.io:8080   user: admin  pass: admin
   Tekton:  http://tekton.127.0.0.1.nip.io:8080
 
 3. Configure Harbor

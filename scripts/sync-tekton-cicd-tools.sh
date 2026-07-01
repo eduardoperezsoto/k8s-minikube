@@ -18,7 +18,7 @@ git -C "${TEKTON_TOOLS_TMP}" config user.email "setup@local"
 git -C "${TEKTON_TOOLS_TMP}" config user.name "Setup"
 git -C "${TEKTON_TOOLS_TMP}" add -A
 git -C "${TEKTON_TOOLS_TMP}" commit -m "tekton-cicd-tools snapshot"
-git -C "${TEKTON_TOOLS_TMP}" remote add origin http://admin:admin123@localhost:3000/cnie-c0-infra/tekton-cicd-tools.git
+git -C "${TEKTON_TOOLS_TMP}" remote add origin http://admin:admin@localhost:3000/cnie-c0-infra/tekton-cicd-tools.git
 git -C "${TEKTON_TOOLS_TMP}" push origin HEAD:main --force
 rm -rf "${TEKTON_TOOLS_TMP}"
 

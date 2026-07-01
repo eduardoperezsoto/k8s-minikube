@@ -16,7 +16,7 @@ git -C "${INFRA_TMP}" config user.email "setup@local"
 git -C "${INFRA_TMP}" config user.name "Setup"
 git -C "${INFRA_TMP}" add -A
 git -C "${INFRA_TMP}" commit -m "infra snapshot"
-git -C "${INFRA_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/infra.git
+git -C "${INFRA_TMP}" remote add gitea http://admin:admin@localhost:3000/cnie-c0-infra/infra.git
 git -C "${INFRA_TMP}" push gitea HEAD:main --force
 rm -rf "${INFRA_TMP}"
 

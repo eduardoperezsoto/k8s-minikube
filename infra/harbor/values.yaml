@@ -10,7 +10,7 @@ expose:
   tls:
     enabled: false
 
-harborAdminPassword: "Harbor12345"
+harborAdminPassword: "admin"
 
 # Sin persistencia para entorno de desarrollo efímero
 persistence:

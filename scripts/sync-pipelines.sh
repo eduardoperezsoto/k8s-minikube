@@ -17,7 +17,7 @@ git -C "${PIPELINES_TMP}" config user.email "setup@local"
 git -C "${PIPELINES_TMP}" config user.name "Setup"
 git -C "${PIPELINES_TMP}" add -A
 git -C "${PIPELINES_TMP}" commit -m "pipelines snapshot"
-git -C "${PIPELINES_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/tekton-pac-pipelines.git
+git -C "${PIPELINES_TMP}" remote add gitea http://admin:admin@localhost:3000/cnie-c0-infra/tekton-pac-pipelines.git
 git -C "${PIPELINES_TMP}" push gitea HEAD:main --force
 rm -rf "${PIPELINES_TMP}"
 

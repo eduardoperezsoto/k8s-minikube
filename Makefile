@@ -1,4 +1,4 @@
-.PHONY: help setup sync-infra sync-pipelines sync-tekton-cicd-tools sync-app sync-ansible-playbooks sync proxy status pipelines cleanup argocd-pass
+.PHONY: help setup sync-infra sync-pipelines sync-tekton-cicd-tools sync-app sync-ansible-playbooks sync proxy status pipelines cleanup
 
 SHELL := /bin/bash
 
@@ -15,7 +15,6 @@ help:
 	@echo "  status          Estado de pods en todos los namespaces relevantes"
 	@echo "  pipelines       Últimos 10 PipelineRuns"
 	@echo "  cleanup         Dispara el pipeline de limpieza de imágenes manualmente"
-	@echo "  argocd-pass     Muestra la contraseña de admin de ArgoCD"
 
 setup:
 	bash .devcontainer/setup-cluster.sh
@@ -55,10 +54,6 @@ status:
 
 pipelines:
 	kubectl get pipelineruns -n cnie-pipelines-as-code --sort-by=.metadata.creationTimestamp | tail -10
-
-argocd-pass:
-	@kubectl -n argocd get secret argocd-initial-admin-secret \
-	  -o jsonpath='{.data.password}' | base64 -d && echo
 
 cleanup:
 	kubectl create -f infra/tekton-pac-deployments/cleanup/cleanup-images-pipelinerun.yaml

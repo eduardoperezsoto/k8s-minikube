@@ -1,3 +1,8 @@
 configs:
   params:
     server.insecure: "true"  # TLS terminado en el ingress, ArgoCD sirve HTTP
+  secret:
+    # Password de admin fija (bcrypt de "admin"), igual que gitea/harbor/grafana.
+    # Genera un hash nuevo con: argocd account bcrypt --password <pass>
+    argocdServerAdminPassword: "$2a$10$TskVeyXOnOO6cNl4QRcBou3/d9.33vI2OLPrUO5x6/kCRYtVFwBcy"
+    argocdServerAdminPasswordMtime: "2026-07-01T00:00:00Z"

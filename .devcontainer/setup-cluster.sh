@@ -36,7 +36,7 @@ kubectl apply -f /workspaces/minikube/infra/harbor/ingress.yaml
 
 kubectl create secret docker-registry harbor-pull-secret \
   --docker-server=harbor.harbor.svc.cluster.local:80 \
-  --docker-username=admin --docker-password=Harbor12345 \
+  --docker-username=admin --docker-password=admin \
   -n default --dry-run=client -o yaml | kubectl apply -f -
 
 # Crear proyectos Harbor
@@ -45,7 +45,7 @@ kubectl create secret docker-registry harbor-pull-secret \
 kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
   -w "  Crear proyecto Harbor 'c0-apps':  HTTP %{http_code}\n" \
   -X POST \
-  -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
+  -H "Authorization: Basic $(echo -n 'admin:admin' | base64)" \
   -H "Content-Type: application/json" \
   -d '{"project_name":"c0-apps","public":false}' \
   "http://localhost:8080/api/v2.0/projects" || true
@@ -53,7 +53,7 @@ kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
 kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
   -w "  Crear proyecto Harbor 'c0-infra': HTTP %{http_code}\n" \
   -X POST \
-  -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
+  -H "Authorization: Basic $(echo -n 'admin:admin' | base64)" \
   -H "Content-Type: application/json" \
   -d '{"project_name":"c0-infra","public":false}' \
   "http://localhost:8080/api/v2.0/projects" || true
@@ -63,7 +63,7 @@ kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
 kubectl exec -n harbor deploy/harbor-core -- curl -s -o /dev/null \
   -w "  Crear proyecto Harbor 'c0-public':     HTTP %{http_code}\n" \
   -X POST \
-  -H "Authorization: Basic $(echo -n 'admin:Harbor12345' | base64)" \
+  -H "Authorization: Basic $(echo -n 'admin:admin' | base64)" \
   -H "Content-Type: application/json" \
   -d '{"project_name":"c0-public","public":true}' \
   "http://localhost:8080/api/v2.0/projects" || true
@@ -78,7 +78,7 @@ kubectl create secret generic gitea-repo-creds \
   --from-literal=type=git \
   --from-literal=url=http://gitea-http.gitea.svc.cluster.local:3000 \
   --from-literal=username=admin \
-  --from-literal=password=admin123 \
+  --from-literal=password=admin \
   -n argocd --dry-run=client -o yaml \
 | kubectl label --local -f - argocd.argoproj.io/secret-type=repo-creds -o yaml \
 | kubectl apply -f -
@@ -88,7 +88,7 @@ kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
 PF_PID=$!
 sleep 3
 
-GITEA_AUTH="Authorization: Basic $(echo -n 'admin:admin123' | base64)"
+GITEA_AUTH="Authorization: Basic $(echo -n 'admin:admin' | base64)"
 
 # Crear orgs
 curl -s -o /dev/null -w "  Crear org cnie-c0-infra: HTTP %{http_code}\n" \
@@ -136,7 +136,7 @@ git -C "${INFRA_TMP}" config user.email "setup@local"
 git -C "${INFRA_TMP}" config user.name "Setup"
 git -C "${INFRA_TMP}" add -A
 git -C "${INFRA_TMP}" commit -m "infra snapshot"
-git -C "${INFRA_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/infra.git
+git -C "${INFRA_TMP}" remote add gitea http://admin:admin@localhost:3000/cnie-c0-infra/infra.git
 git -C "${INFRA_TMP}" push gitea HEAD:main --force
 rm -rf "${INFRA_TMP}"
 
@@ -148,7 +148,7 @@ git -C "${PIPELINES_TMP}" config user.email "setup@local"
 git -C "${PIPELINES_TMP}" config user.name "Setup"
 git -C "${PIPELINES_TMP}" add -A
 git -C "${PIPELINES_TMP}" commit -m "pipelines snapshot"
-git -C "${PIPELINES_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/tekton-pac-pipelines.git
+git -C "${PIPELINES_TMP}" remote add gitea http://admin:admin@localhost:3000/cnie-c0-infra/tekton-pac-pipelines.git
 git -C "${PIPELINES_TMP}" push gitea HEAD:main --force
 rm -rf "${PIPELINES_TMP}"
 
@@ -160,7 +160,7 @@ git -C "${TEKTON_TOOLS_TMP}" config user.email "setup@local"
 git -C "${TEKTON_TOOLS_TMP}" config user.name "Setup"
 git -C "${TEKTON_TOOLS_TMP}" add -A
 git -C "${TEKTON_TOOLS_TMP}" commit -m "tekton-cicd-tools snapshot"
-git -C "${TEKTON_TOOLS_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/tekton-cicd-tools.git
+git -C "${TEKTON_TOOLS_TMP}" remote add gitea http://admin:admin@localhost:3000/cnie-c0-infra/tekton-cicd-tools.git
 git -C "${TEKTON_TOOLS_TMP}" push gitea HEAD:main --force
 rm -rf "${TEKTON_TOOLS_TMP}"
 
@@ -172,7 +172,7 @@ git -C "${ANSIBLE_TMP}" config user.email "setup@local"
 git -C "${ANSIBLE_TMP}" config user.name "Setup"
 git -C "${ANSIBLE_TMP}" add -A
 git -C "${ANSIBLE_TMP}" commit -m "ansible-playbooks snapshot"
-git -C "${ANSIBLE_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-infra/ansible-playbooks.git
+git -C "${ANSIBLE_TMP}" remote add gitea http://admin:admin@localhost:3000/cnie-c0-infra/ansible-playbooks.git
 git -C "${ANSIBLE_TMP}" push gitea HEAD:main --force
 rm -rf "${ANSIBLE_TMP}"
 
@@ -184,7 +184,7 @@ git -C "${APP_TMP}" config user.email "setup@local"
 git -C "${APP_TMP}" config user.name "Setup"
 git -C "${APP_TMP}" add -A
 git -C "${APP_TMP}" commit -m "app snapshot"
-git -C "${APP_TMP}" remote add gitea http://admin:admin123@localhost:3000/cnie-c0-apps/app.git
+git -C "${APP_TMP}" remote add gitea http://admin:admin@localhost:3000/cnie-c0-apps/app.git
 git -C "${APP_TMP}" push gitea HEAD:main --force
 rm -rf "${APP_TMP}"
 
@@ -236,7 +236,7 @@ kubectl port-forward -n gitea svc/gitea-http 3000:3000 &
 PF_PID=$!
 sleep 3
 
-GITEA_AUTH="Authorization: Basic $(echo -n 'admin:admin123' | base64)"
+GITEA_AUTH="Authorization: Basic $(echo -n 'admin:admin' | base64)"
 
 # Rotate the Gitea PAT used by PaC to call back into Gitea (commit status, etc.).
 # Gitea rejects duplicate token names, so delete any previous one first.
@@ -308,12 +308,10 @@ register_pac_org_webhook "cnie-c0-infra"
 kill $PF_PID
 wait $PF_PID 2>/dev/null || true
 
-ARGOCD_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
-
 echo "==> 12. Configurando secrets de CI..."
 kubectl create secret generic gitea-creds \
   --from-literal=username=admin \
-  --from-literal=password=admin123 \
+  --from-literal=password=admin \
   -n cnie-pipelines-as-code --dry-run=client -o yaml \
 | sed '/^kind: Secret$/a type: kubernetes.io/basic-auth' \
 | kubectl annotate --local -f - tekton.dev/git-0=http://gitea-http.gitea.svc.cluster.local:3000 -o yaml \
@@ -328,7 +326,7 @@ kubectl create secret generic argocd-creds \
 kubectl create secret docker-registry harbor-dockerconfig \
   --docker-server=harbor.harbor.svc.cluster.local:80 \
   --docker-username=admin \
-  --docker-password=Harbor12345 \
+  --docker-password=admin \
   -n cnie-pipelines-as-code --dry-run=client -o yaml \
 | kubectl annotate --local -f - tekton.dev/docker-0=harbor.harbor.svc.cluster.local:80 -o yaml \
 | kubectl apply -f -
@@ -336,7 +334,7 @@ kubectl create secret docker-registry harbor-dockerconfig \
 kubectl create secret generic harbor-creds \
   --from-literal=url=http://harbor.harbor.svc.cluster.local:80 \
   --from-literal=username=admin \
-  --from-literal=password=Harbor12345 \
+  --from-literal=password=admin \
   -n cnie-pipelines-as-code --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> 13. Disparando los primeros builds (re-push de tekton-cicd-tools y app)..."
@@ -359,15 +357,15 @@ echo "  kubectl port-forward -n apisix svc/apisix-gateway 8080:80"
 echo ""
 echo "  Gitea:  http://gitea.127.0.0.1.nip.io:8080"
 echo "    user: admin"
-echo "    pass: admin123"
+echo "    pass: admin"
 echo ""
 echo "  Harbor: http://registry.127.0.0.1.nip.io:8080"
 echo "    user: admin"
-echo "    pass: Harbor12345"
+echo "    pass: admin"
 echo ""
 echo "  ArgoCD: http://argocd.127.0.0.1.nip.io:8080"
 echo "    user: admin"
-echo "    pass: ${ARGOCD_PASS}"
+echo "    pass: admin"
 echo ""
 echo "  Tekton Dashboard: http://tekton.127.0.0.1.nip.io:8080"
 echo ""

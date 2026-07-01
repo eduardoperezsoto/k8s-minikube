@@ -17,7 +17,7 @@ git -C "${ANSIBLE_TMP}" config user.email "setup@local"
 git -C "${ANSIBLE_TMP}" config user.name "Setup"
 git -C "${ANSIBLE_TMP}" add -A
 git -C "${ANSIBLE_TMP}" commit -m "ansible-playbooks snapshot"
-git -C "${ANSIBLE_TMP}" remote add origin http://admin:admin123@localhost:3000/cnie-c0-infra/ansible-playbooks.git
+git -C "${ANSIBLE_TMP}" remote add origin http://admin:admin@localhost:3000/cnie-c0-infra/ansible-playbooks.git
 git -C "${ANSIBLE_TMP}" push origin HEAD:main --force
 rm -rf "${ANSIBLE_TMP}"
 

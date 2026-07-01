@@ -1,7 +1,7 @@
 gitea:
   admin:
     username: admin
-    password: "admin123"
+    password: "admin"
     email: "admin@gitea.local"
   config:
     server:
